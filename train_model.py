@@ -1,5 +1,6 @@
 # Copyright 2020 by Andrey Ignatov. All Rights Reserved.
 
+import imageio
 import tensorflow as tf
 from scipy import misc
 import numpy as np
@@ -29,12 +30,12 @@ np.random.seed(0)
 
 # Defining the model architecture
 
-with tf.Graph().as_default(), tf.Session() as sess:
+with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     
     # Placeholders for training data
 
-    phone_ = tf.placeholder(tf.float32, [batch_size, PATCH_HEIGHT, PATCH_WIDTH, 4])
-    dslr_ = tf.placeholder(tf.float32, [batch_size, TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])
+    phone_ = tf.compat.v1.placeholder(tf.float32, [batch_size, PATCH_HEIGHT, PATCH_WIDTH, 4])
+    dslr_ = tf.compat.v1.placeholder(tf.float32, [batch_size, TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])
 
     # Get the processed enhanced image
 
@@ -93,15 +94,15 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # Optimize network parameters
 
-    generator_vars = [v for v in tf.global_variables() if v.name.startswith("generator")]
-    train_step_gen = tf.train.AdamOptimizer(learning_rate).minimize(loss_generator, var_list=generator_vars)
+    generator_vars = [v for v in tf.compat.v1.global_variables() if v.name.startswith("generator")]
+    train_step_gen = tf.compat.v1.train.AdamOptimizer(learning_rate).minimize(loss_generator, var_list=generator_vars)
 
     # Initialize and restore the variables
 
     print("Initializing variables")
-    sess.run(tf.global_variables_initializer())
+    sess.run(tf.compat.v1.global_variables_initializer())
 
-    saver = tf.train.Saver(var_list=generator_vars, max_to_keep=100)
+    saver = tf.compat.v1.train.Saver(var_list=generator_vars, max_to_keep=100)
 
     if LEVEL < 5:
         print("Restoring Variables")
@@ -206,7 +207,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
                 if idx < 4:
                     before_after = np.hstack((crop,
                                     np.reshape(visual_target_crops[idx], [TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])))
-                    misc.imsave("results/pynet_img_" + str(idx) + "_level_" + str(LEVEL) + "_iter_" + str(i) + ".jpg",
+                    imageio.imwrite("results/pynet_img_" + str(idx) + "_level_" + str(LEVEL) + "_iter_" + str(i) + ".jpg",
                                     before_after)
                 idx += 1
 

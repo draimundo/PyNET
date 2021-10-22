@@ -17,12 +17,12 @@ LEVEL, restore_iter, dataset_dir, use_gpu, orig_model = utils.process_test_model
 DSLR_SCALE = float(1) / (2 ** (LEVEL - 1))
 
 # Disable gpu if specified
-config = tf.ConfigProto(device_count={'GPU': 0}) if use_gpu == "false" else None
+config = tf.compat.v1.ConfigProto(device_count={'GPU': 0}) if use_gpu == "false" else None
 
-with tf.Session(config=config) as sess:
+with tf.compat.v1.Session(config=config) as sess:
 
     # Placeholders for test data
-    x_ = tf.placeholder(tf.float32, [1, IMAGE_HEIGHT, IMAGE_WIDTH, 4])
+    x_ = tf.compat.v1.placeholder(tf.float32, [1, IMAGE_HEIGHT, IMAGE_WIDTH, 4])
 
     # generate enhanced image
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 =\
@@ -43,7 +43,7 @@ with tf.Session(config=config) as sess:
 
     # Loading pre-trained model
 
-    saver = tf.train.Saver()
+    saver = tf.compat.v1.train.Saver()
 
     if orig_model == "true":
         saver.restore(sess, "models/original/pynet_level_0.ckpt")
@@ -72,5 +72,5 @@ with tf.Session(config=config) as sess:
 
             # Save the results as .png images
             photo_name = photo.rsplit(".", 1)[0]
-            misc.imsave("results/full-resolution/" + photo_name + "_level_" + str(LEVEL) +
+            imageio.imwrite("results/full-resolution/" + photo_name + "_level_" + str(LEVEL) +
                         "_iteration_" + str(restore_iter) + ".png", enhanced_image)

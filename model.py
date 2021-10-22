@@ -6,7 +6,7 @@ import numpy as np
 
 def PyNET(input, instance_norm=True, instance_norm_level_1=False):
 
-    with tf.variable_scope("generator"):
+    with tf.compat.v1.variable_scope("generator"):
 
         # -----------------------------------------
         # Downsampling layers
@@ -201,7 +201,7 @@ def _instance_norm(net):
     batch, rows, cols, channels = [i.value for i in net.get_shape()]
     var_shape = [channels]
 
-    mu, sigma_sq = tf.nn.moments(net, [1,2], keep_dims=True)
+    mu, sigma_sq = tf.compat.v1.nn.moments(net, [1,2], keep_dims=True)
     shift = tf.Variable(tf.zeros(var_shape))
     scale = tf.Variable(tf.ones(var_shape))
 
@@ -220,7 +220,7 @@ def _conv_init_vars(net, out_channels, filter_size, transpose=False):
     else:
         weights_shape = [filter_size, filter_size, out_channels, in_channels]
 
-    weights_init = tf.Variable(tf.truncated_normal(weights_shape, stddev=0.01, seed=1), dtype=tf.float32)
+    weights_init = tf.Variable(tf.compat.v1.truncated_normal(weights_shape, stddev=0.01, seed=1), dtype=tf.float32)
     return weights_init
 
 
