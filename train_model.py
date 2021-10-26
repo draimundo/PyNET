@@ -6,6 +6,7 @@ from scipy import misc
 import numpy as np
 import sys
 
+from tqdm import tqdm
 from load_dataset import load_training_batch, load_test_data
 from model import PyNET
 import utils
@@ -18,7 +19,7 @@ LEVEL, batch_size, train_size, learning_rate, restore_iter, num_train_iters, dat
 
 # Defining the size of the input and target image patches
 
-PATCH_WIDTH, PATCH_HEIGHT = 224, 224
+PATCH_WIDTH, PATCH_HEIGHT = 128, 128
 
 DSLR_SCALE = float(1) / (2 ** (LEVEL - 1))
 TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
@@ -61,16 +62,16 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     dslr_flat = tf.reshape(dslr_, [-1, TARGET_SIZE])
 
     # MSE loss
-    loss_mse = tf.reduce_sum(tf.pow(dslr_flat - enhanced_flat, 2))/(TARGET_SIZE * batch_size)
+    loss_mse = tf.reduce_mean(tf.pow(dslr_flat - enhanced_flat, 2))
 
     # PSNR loss
-    loss_psnr = 20 * utils.log10(1.0 / tf.sqrt(loss_mse))
+    loss_psnr = tf.reduce_mean(tf.image.psnr(enhanced, dslr_, 1.0))
 
     # SSIM loss
-    loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
+    # loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
 
     # MS-SSIM loss
-    loss_ms_ssim = tf.reduce_mean(tf.image.ssim_multiscale(enhanced, dslr_, 1.0))
+    # loss_ms_ssim = tf.reduce_mean(tf.image.ssim_multiscale(enhanced, dslr_, 1.0))
 
     # Content loss
     CONTENT_LAYER = 'relu5_4'
@@ -78,8 +79,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     enhanced_vgg = vgg.net(vgg_dir, vgg.preprocess(enhanced * 255))
     dslr_vgg = vgg.net(vgg_dir, vgg.preprocess(dslr_ * 255))
 
-    content_size = utils._tensor_size(dslr_vgg[CONTENT_LAYER]) * batch_size
-    loss_content = 2 * tf.nn.l2_loss(enhanced_vgg[CONTENT_LAYER] - dslr_vgg[CONTENT_LAYER]) / content_size
+    loss_content = tf.reduce_mean(tf.math.squared_difference(enhanced_vgg[CONTENT_LAYER], dslr_vgg[CONTENT_LAYER]))
 
     # Final loss function
 
@@ -132,7 +132,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     training_loss = 0.0
 
-    for i in range(num_train_iters + 1):
+    for i in tqdm(range(num_train_iters + 1)):
 
         # Train PyNET model
 
