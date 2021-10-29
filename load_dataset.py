@@ -24,30 +24,30 @@ def extract_bayer_channels(raw):
     return RAW_norm
 
 
-def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE):
+def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE):
 
-    test_directory_dslr = dataset_dir + 'test/fujifilm/'
-    test_directory_phone = dataset_dir + 'test/mediatek_raw/'
+    val_directory_dslr = dataset_dir + 'val/fujifilm/'
+    val_directory_phone = dataset_dir + 'val/mediatek_raw/'
 
-    # NUM_TEST_IMAGES = 1204
-    NUM_TEST_IMAGES = len([name for name in os.listdir(test_directory_phone)
-                           if os.path.isfile(os.path.join(test_directory_phone, name))])
+    # NUM_VAL_IMAGES = 1204
+    NUM_VAL_IMAGES = len([name for name in os.listdir(val_directory_phone)
+                           if os.path.isfile(os.path.join(val_directory_phone, name))])
 
-    test_data = np.zeros((NUM_TEST_IMAGES, PATCH_WIDTH, PATCH_HEIGHT, 4))
-    test_answ = np.zeros((NUM_TEST_IMAGES, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3))
+    val_data = np.zeros((NUM_VAL_IMAGES, PATCH_WIDTH, PATCH_HEIGHT, 4))
+    val_answ = np.zeros((NUM_VAL_IMAGES, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3))
 
-    for i in tqdm(range(0, NUM_TEST_IMAGES)):
+    for i in tqdm(range(0, NUM_VAL_IMAGES)):
 
-        I = np.asarray(imageio.imread((test_directory_phone + str(i) + '.png')))
+        I = np.asarray(imageio.imread((val_directory_phone + str(i) + '.png')))
         I = extract_bayer_channels(I)
-        test_data[i, :] = I
+        val_data[i, :] = I
         
-        I = Image.open(test_directory_dslr + str(i) + '.png')
+        I = Image.open(val_directory_dslr + str(i) + '.png')
         I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
-        I = np.float16(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3])) / 255
-        test_answ[i, :] = I
+        I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3])) / 255
+        val_answ[i, :] = I
 
-    return test_data, test_answ
+    return val_data, val_answ
 
 
 def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE):
@@ -60,7 +60,7 @@ def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR
                                if os.path.isfile(os.path.join(train_directory_phone, name))])
 
     TRAIN_IMAGES = np.random.choice(np.arange(0, NUM_TRAINING_IMAGES), TRAIN_SIZE, replace=False)
-
+    #TRAIN_IMAGES = np.arange(0, TRAIN_SIZE)
     train_data = np.zeros((TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, 4))
     train_answ = np.zeros((TRAIN_SIZE, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3))
 
@@ -71,9 +71,9 @@ def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR
         I = extract_bayer_channels(I)
         train_data[i, :] = I
 
-        I = Image.open(train_directory_dslr + str(i) + '.png')
+        I = Image.open(train_directory_dslr + str(img) + '.png')
         I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
-        I = np.float16(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3])) / 255
+        I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3])) / 255
         train_answ[i, :] = I
 
         i += 1

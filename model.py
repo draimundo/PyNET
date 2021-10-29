@@ -5,7 +5,6 @@ import numpy as np
 
 
 def PyNET(input, instance_norm=True, instance_norm_level_1=False):
-
     with tf.compat.v1.variable_scope("generator"):
 
         # -----------------------------------------
@@ -136,6 +135,7 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
     return output_l0, output_l1, output_l2, output_l3, output_l4, output_l5
 
 
+
 def _conv_multi_block(input, max_size, num_maps, instance_norm):
 
     conv_3a = _conv_layer(input, num_maps, 3, 1, relu=True, instance_norm=instance_norm)
@@ -175,10 +175,6 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
 
-def leaky_relu(x, alpha=0.2):
-    return tf.maximum(alpha * x, x)
-
-
 def _conv_layer(net, num_filters, filter_size, strides, relu=True, instance_norm=False, padding='SAME'):
 
     weights_init = _conv_init_vars(net, num_filters, filter_size)
@@ -191,7 +187,7 @@ def _conv_layer(net, num_filters, filter_size, strides, relu=True, instance_norm
         net = _instance_norm(net)
 
     if relu:
-        net = leaky_relu(net)
+        net = tf.compat.v1.nn.leaky_relu(net)
 
     return net
 
@@ -201,7 +197,7 @@ def _instance_norm(net):
     batch, rows, cols, channels = [i for i in net.get_shape()]
     var_shape = [channels]
 
-    mu, sigma_sq = tf.compat.v1.nn.moments(net, [1,2], keep_dims=True)
+    mu, sigma_sq = tf.nn.moments(net, [1,2], keepdims=True)
     shift = tf.Variable(tf.zeros(var_shape))
     scale = tf.Variable(tf.ones(var_shape))
 
@@ -220,7 +216,7 @@ def _conv_init_vars(net, out_channels, filter_size, transpose=False):
     else:
         weights_shape = [filter_size, filter_size, out_channels, in_channels]
 
-    weights_init = tf.Variable(tf.compat.v1.truncated_normal(weights_shape, stddev=0.01, seed=1), dtype=tf.float32)
+    weights_init = tf.Variable(tf.random.truncated_normal(weights_shape, stddev=0.01, seed=1), dtype=tf.float32)
     return weights_init
 
 
@@ -236,7 +232,7 @@ def _conv_tranpose_layer(net, num_filters, filter_size, strides):
     strides_shape = [1, strides, strides, 1]
     net = tf.nn.conv2d_transpose(net, weights_init, tf_shape, strides_shape, padding='SAME')
 
-    return leaky_relu(net)
+    return tf.compat.v1.nn.leaky_relu(net)
 
 
 def max_pool(x, n):

@@ -2,26 +2,29 @@
 
 import imageio
 import tensorflow as tf
-from scipy import misc
 import numpy as np
 import sys
 
 from tqdm import tqdm
-from load_dataset import load_training_batch, load_test_data
+from load_dataset import load_training_batch, load_val_data
 from model import PyNET
 import utils
 import vgg
 
+
+
+
 # Processing command arguments
 
-LEVEL, batch_size, train_size, learning_rate, restore_iter, num_train_iters, dataset_dir, vgg_dir, eval_step = \
-    utils.process_command_args(sys.argv)
+level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
+dataset_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color\
+        = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
 
 PATCH_WIDTH, PATCH_HEIGHT = 128, 128
 
-DSLR_SCALE = float(1) / (2 ** (LEVEL - 1))
+DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
 TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE)
 TARGET_DEPTH = 3
@@ -43,54 +46,63 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
         PyNET(phone_, instance_norm=True, instance_norm_level_1=False)
 
-    if LEVEL == 5:
+    if level == 5:
         enhanced = output_l5
-    if LEVEL == 4:
+    if level == 4:
         enhanced = output_l4
-    if LEVEL == 3:
+    if level == 3:
         enhanced = output_l3
-    if LEVEL == 2:
+    if level == 2:
         enhanced = output_l2
-    if LEVEL == 1:
+    if level == 1:
         enhanced = output_l1
-    if LEVEL == 0:
+    if level == 0:
         enhanced = output_l0
 
     # Losses
-
-    enhanced_flat = tf.reshape(enhanced, [-1, TARGET_SIZE])
-    dslr_flat = tf.reshape(dslr_, [-1, TARGET_SIZE])
-
     # MSE loss
-    loss_mse = tf.reduce_mean(tf.pow(dslr_flat - enhanced_flat, 2))
+    loss_mse = tf.reduce_mean(tf.math.squared_difference(enhanced, dslr_))
+    loss_generator = loss_mse * fac_mse
+    loss_list = [loss_mse]
+    loss_text = ["loss_mse"]
 
     # PSNR loss
     loss_psnr = tf.reduce_mean(tf.image.psnr(enhanced, dslr_, 1.0))
+    loss_list = [loss_psnr]
+    loss_text = ["loss_psnr"]
 
     # SSIM loss
-    # loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
+    if fac_ssim > 0:
+        loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
+        loss_generator += loss_ssim * fac_ssim
+        loss_list.append(loss_ssim)
+        loss_text.append("loss_ssim")
 
     # MS-SSIM loss
     # loss_ms_ssim = tf.reduce_mean(tf.image.ssim_multiscale(enhanced, dslr_, 1.0))
 
+    # Color loss
+    if fac_color > 0:
+        enhanced_blur = utils.blur(enhanced)
+        dslr_blur = utils.blur(dslr_)
+        loss_color = tf.reduce_mean(tf.math.squared_difference(dslr_blur, enhanced_blur))
+        loss_generator += loss_color * fac_color
+        loss_list.append(loss_color)
+        loss_text.append("loss_color")
+
     # Content loss
     CONTENT_LAYER = 'relu5_4'
-
     enhanced_vgg = vgg.net(vgg_dir, vgg.preprocess(enhanced * 255))
     dslr_vgg = vgg.net(vgg_dir, vgg.preprocess(dslr_ * 255))
-
     loss_content = tf.reduce_mean(tf.math.squared_difference(enhanced_vgg[CONTENT_LAYER], dslr_vgg[CONTENT_LAYER]))
+    loss_list.append(loss_content)
+    loss_text.append("loss_content")
+    if fac_content > 0:
+        loss_generator += loss_content * fac_content
 
     # Final loss function
-
-    if LEVEL == 5 or LEVEL == 4:
-        loss_generator = loss_mse * 100
-    if LEVEL == 3 or LEVEL == 2:
-        loss_generator = loss_mse * 100 + loss_content
-    if LEVEL == 1:
-        loss_generator = loss_mse * 50 + loss_content
-    if LEVEL == 0:
-        loss_generator = loss_mse * 20 + loss_content + (1 - loss_ssim) * 20
+    loss_list.insert(0, loss_generator)
+    loss_text.insert(0, "loss_generator")
 
     # Optimize network parameters
 
@@ -104,35 +116,35 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     saver = tf.compat.v1.train.Saver(var_list=generator_vars, max_to_keep=100)
 
-    if LEVEL < 5:
+    if level < 5:
         print("Restoring Variables")
-        saver.restore(sess, "models/pynet_level_" + str(LEVEL + 1) + "_iteration_" + str(restore_iter) + ".ckpt")
+        saver.restore(sess, "models/pynet_level_" + str(level + 1) + "_iteration_" + str(restore_iter) + ".ckpt")
 
-    # Loading training and test data
-
-    print("Loading test data...")
-    test_data, test_answ = load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE)
-    print("Test data was loaded\n")
+    # Loading training and val data
+    print("Loading val data...")
+    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE)
+    print("Val data was loaded\n")
 
     print("Loading training data...")
     train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE)
     print("Training data was loaded\n")
 
-    TEST_SIZE = test_data.shape[0]
-    num_test_batches = int(test_data.shape[0] / batch_size)
+    VAL_SIZE = val_data.shape[0]
+    num_val_batches = int(val_data.shape[0] / batch_size)
 
-    visual_crops_ids = np.random.randint(0, TEST_SIZE, batch_size)
-    visual_test_crops = test_data[visual_crops_ids, :]
-    visual_target_crops = test_answ[visual_crops_ids, :]
+    visual_crops_ids = np.random.randint(0, VAL_SIZE, batch_size)
+    visual_val_crops = val_data[visual_crops_ids, :]
+    visual_target_crops = val_answ[visual_crops_ids, :]
 
     print("Training network")
 
-    logs = open("models/logs.txt", "w+")
+    iter_start = restore_iter+1 if restore_iter > 0 else 0
+    logs = open('models/' + "logs_" + str(iter_start) + "-" + str(num_train_iters) + ".txt", "w+")
     logs.close()
 
     training_loss = 0.0
 
-    for i in tqdm(range(num_train_iters + 1)):
+    for i in tqdm(range(iter_start, num_train_iters + 1)):
 
         # Train PyNET model
 
@@ -162,64 +174,53 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if i % eval_step == 0:
 
             # Evaluate PyNET model
+            val_losses_gen = np.zeros((1, len(loss_text)))
 
-            test_losses = np.zeros((1, 5 if LEVEL < 2 else 4))
-
-            for j in range(num_test_batches):
+            for j in range(num_val_batches):
 
                 be = j * batch_size
                 en = (j+1) * batch_size
 
-                phone_images = test_data[be:en]
-                dslr_images = test_answ[be:en]
+                phone_images = val_data[be:en]
+                dslr_images = val_answ[be:en]
 
-                if LEVEL < 2:
-                    losses = sess.run([loss_generator, loss_content, loss_mse, loss_psnr, loss_ms_ssim], \
-                                    feed_dict={phone_: phone_images, dslr_: dslr_images})
-                else:
-                    losses = sess.run([loss_generator, loss_content, loss_mse, loss_psnr], \
+                losses = sess.run([loss_list], \
                                       feed_dict={phone_: phone_images, dslr_: dslr_images})
 
-                test_losses += np.asarray(losses) / num_test_batches
+                val_losses_gen += np.asarray(losses) / num_val_batches
 
-            if LEVEL < 2:
-                logs_gen = "step %d | training: %.4g, test: %.4g | content: %.4g, mse: %.4g, psnr: %.4g, " \
-                           "ms-ssim: %.4g\n" % (i, training_loss, test_losses[0][0], test_losses[0][1],
-                                                test_losses[0][2], test_losses[0][3], test_losses[0][4])
-            else:
-                logs_gen = "step %d | training: %.4g, test: %.4g | content: %.4g, mse: %.4g, psnr: %.4g\n" % \
-                       (i, training_loss, test_losses[0][0], test_losses[0][1], test_losses[0][2], test_losses[0][3])
+            logs_gen = "step %d | training: %.4g,  "  % (i, training_loss)
+            for idx, loss in enumerate(loss_text):
+                logs_gen += "%s: %.4g; " % (loss, val_losses_gen[0][idx])
+
             print(logs_gen)
 
             # Save the results to log file
 
-            logs = open("models/logs.txt", "a")
+            logs = open('models/' + "logs_" + str(iter_start) + "-" + str(num_train_iters) + ".txt", "a")
             logs.write(logs_gen)
             logs.write('\n')
             logs.close()
 
-            # Save visual results for several test image crops
-
-            enhanced_crops = sess.run(enhanced, feed_dict={phone_: visual_test_crops, dslr_: dslr_images})
-
-            idx = 0
-            for crop in enhanced_crops:
-                if idx < 4:
-                    before_after = np.hstack((crop,
-                                    np.reshape(visual_target_crops[idx], [TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])))
-                    imageio.imwrite("results/pynet_img_" + str(idx) + "_level_" + str(LEVEL) + "_iter_" + str(i) + ".jpg",
-                                    before_after)
-                idx += 1
+            # Save visual results for several val image crops
+            if save_mid_imgs:
+                enhanced_crops = sess.run(enhanced, feed_dict={phone_: visual_val_crops, dslr_: dslr_images})
+                idx = 0
+                for crop in enhanced_crops:
+                    if idx < 10:
+                        before_after = np.hstack((crop,
+                                        np.reshape(visual_target_crops[idx], [TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])))
+                        imageio.imwrite("results/pynet_img_" + str(idx) + "_level_" + str(level) + "_iter_" + str(i) + ".jpg",
+                                        before_after)
+                    idx += 1
 
             training_loss = 0.0
 
             # Saving the model that corresponds to the current iteration
-            saver.save(sess, "models/pynet_level_" + str(LEVEL) + "_iteration_" + str(i) + ".ckpt", write_meta_graph=False)
+            saver.save(sess, "models/pynet_level_" + str(level) + "_iteration_" + str(i) + ".ckpt", write_meta_graph=False)
 
         # Loading new training data
-        if i % 1000 == 0:
-
+        if i % 1000 == 0  and i > 0:
             del train_data
             del train_answ
             train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE)
-
