@@ -22,7 +22,7 @@ def process_command_args(arguments):
 
     eval_step = 200
     restore_iter = 0
-    num_train_iters = 5000
+    num_train_iters = 0
     save_mid_imgs = False
 
     model_dir = 'models/'
@@ -104,6 +104,7 @@ def process_command_args(arguments):
 
     if restore_iter is None and level < 5:
         restore_iter = get_last_iter(level + 1)
+        num_train_iters += restore_iter
         if restore_iter == -1:
             print("Error: Cannot find any pre-trained models for PyNET's level " + str(level + 1) + ".")
             print("Aborting the training.")
