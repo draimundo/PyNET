@@ -17,7 +17,7 @@ import vgg
 # Processing command arguments
 
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
-dataset_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color\
+dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color\
         = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -122,7 +122,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     if level < 5:
         print("Restoring Variables")
-        saver.restore(sess, "models/pynet_level_" + str(level + 1) + "_iteration_" + str(restore_iter) + ".ckpt")
+        saver.restore(sess, model_dir + "pynet_level_" + str(level + 1) + "_iteration_" + str(restore_iter) + ".ckpt")
 
     # Loading training and val data
     print("Loading val data...")
@@ -143,7 +143,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     print("Training network")
 
     iter_start = restore_iter+1 if restore_iter > 0 else 0
-    logs = open('models/' + "logs_" + str(iter_start) + "-" + str(num_train_iters) + ".txt", "w+")
+    logs = open(model_dir + "logs_" + str(iter_start) + "-" + str(num_train_iters) + ".txt", "w+")
     logs.close()
 
     training_loss = 0.0
@@ -201,7 +201,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
             # Save the results to log file
 
-            logs = open('models/' + "logs_" + str(iter_start) + "-" + str(num_train_iters) + ".txt", "a")
+            logs = open(model_dir + "logs_" + str(iter_start) + "-" + str(num_train_iters) + ".txt", "a")
             logs.write(logs_gen)
             logs.write('\n')
             logs.close()
@@ -221,7 +221,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
             training_loss = 0.0
 
             # Saving the model that corresponds to the current iteration
-            saver.save(sess, "models/pynet_level_" + str(level) + "_iteration_" + str(i) + ".ckpt", write_meta_graph=False)
+            saver.save(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(i) + ".ckpt", write_meta_graph=False)
 
         # Loading new training data
         if i % 1000 == 0  and i > 0:

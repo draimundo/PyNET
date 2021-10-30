@@ -64,6 +64,46 @@ def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exp
 
     return val_data, val_answ
 
+def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir):
+
+    test_directory_dslr = dataset_dir + 'test/fujifilm/'
+    test_directory_phone = dataset_dir + 'test/mediatek_raw/'
+
+    if triple_exposure:
+        test_directory_over = dataset_dir + 'test/' + over_dir
+        test_directory_under = dataset_dir + 'test/' + under_dir
+
+    PATCH_DEPTH = 4
+    if triple_exposure:
+        PATCH_DEPTH *= 3
+
+    # NUM_VAL_IMAGES = 1204
+    NUM_TEST_IMAGES = len([name for name in os.listdir(test_directory_phone)
+                           if os.path.isfile(os.path.join(test_directory_phone, name))])
+
+    test_data = np.zeros((NUM_TEST_IMAGES, PATCH_WIDTH, PATCH_HEIGHT, PATCH_DEPTH))
+    test_answ = np.zeros((NUM_TEST_IMAGES, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3))
+
+    for i in tqdm(range(0, NUM_TEST_IMAGES)):
+
+        In = np.asarray(imageio.imread(test_directory_phone + str(i) + '.png'))
+        In = extract_bayer_channels(In)
+
+        if triple_exposure:
+            Io = np.asarray(imageio.imread(test_directory_over + str(i) + '.png'))
+            Io = extract_bayer_channels(Io)
+            Iu = np.asarray(imageio.imread(test_directory_under + str(i) + '.png'))
+            Iu = extract_bayer_channels(Iu)
+            test_data[i, :] = np.dstack((In, Io, Iu))
+        else:
+            test_data[i, :] = In
+
+        I = Image.open(test_directory_dslr + str(i) + '.png')
+        I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
+        I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE), int(PATCH_HEIGHT * DSLR_SCALE), 3])) / 255
+        test_answ[i, :] = I
+
+    return test_data, test_answ
 
 def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir):
 

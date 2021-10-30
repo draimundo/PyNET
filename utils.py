@@ -18,13 +18,14 @@ def process_command_args(arguments):
     batch_size = 50
 
     train_size = 5000
-    learning_rate = 5e-6
+    learning_rate = 5e-5
 
     eval_step = 200
     restore_iter = 0
-    num_train_iters = None
-    save_mid_imgs = True
+    num_train_iters = 5000
+    save_mid_imgs = False
 
+    model_dir = 'models/'
     dataset_dir = 'raw_images/'
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
 
@@ -65,6 +66,9 @@ def process_command_args(arguments):
             num_train_iters = int(args.split("=")[1])
 
         # -----------------------------------
+
+        if args.startswith("model_dir"):
+            model_dir = args.split("=")[1]
 
         if args.startswith("dataset_dir"):
             dataset_dir = args.split("=")[1]
@@ -116,6 +120,7 @@ def process_command_args(arguments):
     print("Training iterations: " + str(num_train_iters))
     print("Evaluation step: " + str(eval_step))
     print("Restore Iteration: " + str(restore_iter))
+    print("Path to Raw-to-RGB model network: " + model_dir)
     print("Path to the dataset: " + dataset_dir)
     print("Path to VGG-19 network: " + vgg_dir)
     print("Triple exposure: " + str(triple_exposure))
@@ -125,7 +130,7 @@ def process_command_args(arguments):
     print("Loss function=" + " content:" + str(fac_content) + " +MSE:" + str(fac_mse) + " +SSIM:" + str(fac_ssim) + " +color:" + str(fac_color))
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
-            dataset_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color
+            dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color
 
 
 def process_test_model_args(arguments):
