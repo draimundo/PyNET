@@ -103,7 +103,7 @@ def process_command_args(arguments):
 
 
     if restore_iter is None and level < 5:
-        restore_iter = get_last_iter(level + 1)
+        restore_iter = get_last_iter(level + 1, model_dir)
         num_train_iters += restore_iter
         if restore_iter == -1:
             print("Error: Cannot find any pre-trained models for PyNET's level " + str(level + 1) + ".")
@@ -170,10 +170,10 @@ def process_test_model_args(arguments):
     return level, restore_iter, dataset_dir, use_gpu, orig_model
 
 
-def get_last_iter(level):
+def get_last_iter(level, model_dir):
 
     saved_models = [int((model_file.split("_")[-1]).split(".")[0])
-                    for model_file in os.listdir("models/")
+                    for model_file in os.listdir(model_dir)
                     if model_file.startswith("pynet_level_" + str(level))]
 
     if len(saved_models) > 0:
