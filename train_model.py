@@ -16,13 +16,16 @@ import vgg
 
 # Processing command arguments
 
-level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
+level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
 dataset_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color\
         = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
 
 PATCH_WIDTH, PATCH_HEIGHT = 128, 128
+PATCH_DEPTH = 4
+if triple_exposure:
+    PATCH_DEPTH *= 3
 
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
@@ -31,6 +34,7 @@ TARGET_DEPTH = 3
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
 np.random.seed(0)
+tf.random.set_seed(0)
 
 # Defining the model architecture
 
@@ -38,7 +42,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     
     # Placeholders for training data
 
-    phone_ = tf.compat.v1.placeholder(tf.float32, [batch_size, PATCH_HEIGHT, PATCH_WIDTH, 4])
+    phone_ = tf.compat.v1.placeholder(tf.float32, [batch_size, PATCH_HEIGHT, PATCH_WIDTH, PATCH_DEPTH])
     dslr_ = tf.compat.v1.placeholder(tf.float32, [batch_size, TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])
 
     # Get the processed enhanced image
@@ -68,8 +72,8 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # PSNR loss
     loss_psnr = tf.reduce_mean(tf.image.psnr(enhanced, dslr_, 1.0))
-    loss_list = [loss_psnr]
-    loss_text = ["loss_psnr"]
+    loss_list.append(loss_psnr)
+    loss_text.append("loss_psnr")
 
     # SSIM loss
     if fac_ssim > 0:
@@ -122,11 +126,11 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Loading training and val data
     print("Loading val data...")
-    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE)
+    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)
     print("Val data was loaded\n")
 
     print("Loading training data...")
-    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE)
+    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)
     print("Training data was loaded\n")
 
     VAL_SIZE = val_data.shape[0]
@@ -223,4 +227,4 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if i % 1000 == 0  and i > 0:
             del train_data
             del train_answ
-            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE)
+            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)

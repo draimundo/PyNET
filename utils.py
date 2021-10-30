@@ -21,17 +21,21 @@ def process_command_args(arguments):
     learning_rate = 5e-6
 
     eval_step = 200
-    restore_iter = None
+    restore_iter = 0
     num_train_iters = None
     save_mid_imgs = True
 
     dataset_dir = 'raw_images/'
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
 
-    fac_content = 100
-    fac_mse = 0
+    fac_mse = 100
+    fac_content = 0
     fac_ssim = 0
     fac_color = 0
+
+    over_dir = 'mediatek_raw_over/'
+    under_dir = 'mediatek_raw_under/'
+    triple_exposure = True
 
     if level == 3 or level == 2:
         fac_content = 1
@@ -84,6 +88,15 @@ def process_command_args(arguments):
         if args.startswith("fac_color"):
             fac_color = float(args.split("=")[1])
 
+        if args.startswith("triple_exposure"):
+            triple_exposure = bool(args.split("=")[1])
+
+        if args.startswith("over_dir"):
+            over_dir = args.split("=")[1]
+
+        if args.startswith("under_dir"):
+            under_dir = args.split("=")[1]
+
 
     if restore_iter is None and level < 5:
         restore_iter = get_last_iter(level + 1)
@@ -105,10 +118,14 @@ def process_command_args(arguments):
     print("Restore Iteration: " + str(restore_iter))
     print("Path to the dataset: " + dataset_dir)
     print("Path to VGG-19 network: " + vgg_dir)
+    print("Triple exposure: " + str(triple_exposure))
+    if triple_exposure:
+        print("Path to the over dir: " + over_dir)
+        print("Path to the under dir: " + under_dir)
     print("Loss function=" + " content:" + str(fac_content) + " +MSE:" + str(fac_mse) + " +SSIM:" + str(fac_ssim) + " +color:" + str(fac_color))
 
-    return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
-           dataset_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color
+    return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
+            dataset_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color
 
 
 def process_test_model_args(arguments):
