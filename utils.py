@@ -21,8 +21,8 @@ def process_command_args(arguments):
     learning_rate = 5e-5
 
     eval_step = 200
-    restore_iter = 0
-    num_train_iters = 0
+    restore_iter = None
+    num_train_iters = None
     save_mid_imgs = False
 
     model_dir = 'models/'
