@@ -113,9 +113,6 @@ def process_command_args(arguments):
             print("Aborting the training.")
             sys.exit()
 
-    if num_train_iters is None:
-        num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
-
     print("The following parameters will be applied for CNN training:")
 
     print("Training level: " + str(level))
