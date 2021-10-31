@@ -77,7 +77,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # SSIM loss
     if fac_ssim > 0:
-        loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
+        loss_ssim = 1 - tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
         loss_generator += loss_ssim * fac_ssim
         loss_list.append(loss_ssim)
         loss_text.append("loss_ssim")

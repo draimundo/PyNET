@@ -113,7 +113,7 @@ def process_command_args(arguments):
     if level == 1:
         fac_mse, fac_content = 50, 1
     if level == 0:
-        fac_content, fac_ssim = 1, 20
+        fac_mse, fac_content, fac_ssim = 20, 1, 20
 
     print("The following parameters will be applied for CNN training:")
 
