@@ -101,9 +101,12 @@ def process_command_args(arguments):
         if args.startswith("under_dir"):
             under_dir = args.split("=")[1]
 
+    if num_train_iters is None:
+        num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
 
     if restore_iter is None and level < 5:
         restore_iter = get_last_iter(level + 1, model_dir)
+        print(restore_iter)
         num_train_iters += restore_iter
         if restore_iter == -1:
             print("Error: Cannot find any pre-trained models for PyNET's level " + str(level + 1) + ".")
