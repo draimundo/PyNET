@@ -93,7 +93,7 @@ def process_command_args(arguments):
             fac_color = float(args.split("=")[1])
 
         if args.startswith("triple_exposure"):
-            triple_exposure = bool(args.split("=")[1])
+            triple_exposure = eval(args.split("=")[1])
 
         if args.startswith("over_dir"):
             over_dir = args.split("=")[1]
