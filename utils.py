@@ -20,7 +20,7 @@ def process_command_args(arguments):
     train_size = 5000
     learning_rate = 5e-5
 
-    eval_step = 200
+    eval_step = 500
     restore_iter = None
     num_train_iters = None
     save_mid_imgs = False
@@ -38,12 +38,7 @@ def process_command_args(arguments):
     under_dir = 'mediatek_raw_under/'
     triple_exposure = True
 
-    if level == 3 or level == 2:
-        fac_content = 1
-    if level == 1:
-        fac_mse, fac_content = 50, 1
-    if level == 0:
-        fac_content, fac_ssim = 1, 20
+
 
     for args in arguments:
 
@@ -112,6 +107,13 @@ def process_command_args(arguments):
             print("Error: Cannot find any pre-trained models for PyNET's level " + str(level + 1) + ".")
             print("Aborting the training.")
             sys.exit()
+
+    if level == 3 or level == 2:
+        fac_content = 1
+    if level == 1:
+        fac_mse, fac_content = 50, 1
+    if level == 0:
+        fac_content, fac_ssim = 1, 20
 
     print("The following parameters will be applied for CNN training:")
 

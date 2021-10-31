@@ -13,35 +13,43 @@ from model import PyNET
 from load_dataset import extract_bayer_channels
 
 dataset_dir = 'raw_images/'
-model_dir = 'models/'
+model_dir = 'models/triple_exp/'
 dslr_dir = 'fujifilm/'
 phone_dir = 'mediatek_raw/'
 over_dir = 'mediatek_raw_over/'
 under_dir = 'mediatek_raw_under/'
 vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
-restore_iters = range(1000,5200,200)
+restore_iters = range(1400,6400,200)
 use_gpu = False
 triple_exposure = True
 
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
 
-level = 5
+level = 4
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
+MAX_SCALE = float(1) / (2 ** (5 - 1))
+IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
+
+IMAGE_HCROP= int(np.floor(IMAGE_HEIGHT * MAX_SCALE)/MAX_SCALE)
+IMAGE_WCROP = int(np.floor(IMAGE_WIDTH * MAX_SCALE)/MAX_SCALE)
+
+TARGET_HEIGHT = int(np.floor(IMAGE_HCROP * DSLR_SCALE))
+TARGET_WIDTH = int(np.floor(IMAGE_WCROP * DSLR_SCALE))
+
+PATCH_HEIGHT = int(np.floor(IMAGE_HCROP*DSLR_SCALE)/DSLR_SCALE)
+PATCH_WIDTH = int(np.floor(IMAGE_WCROP*DSLR_SCALE)/DSLR_SCALE)
+
+TARGET_DEPTH = 3
 PATCH_DEPTH = 4
 if triple_exposure:
     PATCH_DEPTH *= 3
-TARGET_WIDTH = int(np.floor(IMAGE_WIDTH * DSLR_SCALE))
-TARGET_HEIGHT = int(np.floor(IMAGE_HEIGHT * DSLR_SCALE))
-TARGET_DEPTH = 3
+
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
 # Disable gpu if specified
 config = tf.compat.v1.ConfigProto(device_count={'GPU': 0}) if use_gpu == "false" else None
 
 with tf.compat.v1.Session(config=config) as sess:
-
-    PATCH_HEIGHT = int(np.floor(IMAGE_HEIGHT*DSLR_SCALE)/DSLR_SCALE)
-    PATCH_WIDTH = int(np.floor(IMAGE_WIDTH*DSLR_SCALE)/DSLR_SCALE)
 
     # Placeholders for test data
     phone_ = tf.compat.v1.placeholder(tf.float32, [1, PATCH_HEIGHT, PATCH_WIDTH, PATCH_DEPTH])
@@ -96,7 +104,7 @@ with tf.compat.v1.Session(config=config) as sess:
 
         for restore_iter in restore_iters:
             print("Restoring Variables")
-            saver.restore(sess, "models/pynet_level_" + str(level) + "_iteration_" + str(restore_iter) + ".ckpt")
+            saver.restore(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(restore_iter) + ".ckpt")
             enhanced_tensor = sess.run(enhanced, feed_dict={phone_: I})
             enhanced_image = np.reshape(enhanced_tensor, [TARGET_HEIGHT, TARGET_WIDTH, 3])
 
