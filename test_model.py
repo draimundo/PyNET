@@ -1,10 +1,9 @@
 # Copyright 2020 by Andrey Ignatov. All Rights Reserved.
 
-from scipy import misc
 import numpy as np
 import tensorflow as tf
 import imageio
-import sys
+from tqdm import tqdm
 import os
 import rawpy
 
@@ -13,19 +12,20 @@ from model import PyNET
 from load_dataset import extract_bayer_channels
 
 dataset_dir = 'raw_images/'
-model_dir = 'models/triple_exp/'
+out_dir = 'single_exp/'
+model_dir = 'models/single_exp/'
 dslr_dir = 'fujifilm/'
 phone_dir = 'mediatek_raw/'
 over_dir = 'mediatek_raw_over/'
 under_dir = 'mediatek_raw_under/'
 vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
-restore_iters = range(1400,6400,200)
+restore_iters = range(44000,94000,500)
 use_gpu = False
-triple_exposure = True
+triple_exposure = False
 
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
 
-level = 4
+level = 1
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 MAX_SCALE = float(1) / (2 ** (5 - 1))
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
@@ -47,7 +47,7 @@ if triple_exposure:
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
 # Disable gpu if specified
-config = tf.compat.v1.ConfigProto(device_count={'GPU': 0}) if use_gpu == "false" else None
+config = tf.compat.v1.ConfigProto(device_count={'GPU': 0}) if use_gpu == False else None
 
 with tf.compat.v1.Session(config=config) as sess:
 
@@ -82,7 +82,9 @@ with tf.compat.v1.Session(config=config) as sess:
     test_photos = [f for f in os.listdir(test_dir_full) if os.path.isfile(test_dir_full + f)]
     test_photos.sort()
 
-    for photo in test_photos:
+    print("Loading images")
+    images = np.zeros((len(test_photos), PATCH_HEIGHT, PATCH_WIDTH, PATCH_DEPTH))
+    for i, photo in tqdm(enumerate(test_photos)):
         print("Processing image " + photo)
 
         In = np.asarray(rawpy.imread((test_dir_full + photo)).raw_image.astype(np.float32))
@@ -99,16 +101,18 @@ with tf.compat.v1.Session(config=config) as sess:
         else:
             I = In
 
-        I = [I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]]
-        # Run inference
+        images[i,...] = I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]
+    print("Images loaded")
+    # Run inference
 
-        for restore_iter in restore_iters:
-            print("Restoring Variables")
-            saver.restore(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(restore_iter) + ".ckpt")
-            enhanced_tensor = sess.run(enhanced, feed_dict={phone_: I})
+    for restore_iter in tqdm(restore_iters):
+        saver.restore(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(restore_iter) + ".ckpt")
+        
+        for i, photo in tqdm(enumerate(test_photos)):
+            enhanced_tensor = sess.run(enhanced, feed_dict={phone_: [images[i,...]]})
             enhanced_image = np.reshape(enhanced_tensor, [TARGET_HEIGHT, TARGET_WIDTH, 3])
 
             # Save the results as .png images
             photo_name = photo.rsplit(".", 1)[0]
-            imageio.imwrite("results/full-resolution/" + photo_name + "_level_" + str(level) +
+            imageio.imwrite("results/full-resolution/"+ out_dir + photo_name + "_level_" + str(level) +
                         "_iteration_" + str(restore_iter) + ".png", enhanced_image)
