@@ -123,7 +123,6 @@ def process_command_args(arguments):
             fac_mse, fac_content, fac_ssim = 20, 1, 20
 
     print("The following parameters will be applied for CNN training:")
-
     print("Training level: " + str(level))
     print("Batch size: " + str(batch_size))
     print("Learning rate: " + str(learning_rate))
@@ -152,6 +151,8 @@ def process_test_model_args(arguments):
     level = 5
 
     for args in arguments:
+
+        
         if args.startswith("out_dir"):
             out_dir = args.split("=")[1]
 
@@ -184,8 +185,98 @@ def process_test_model_args(arguments):
         restore_iters = range(start_iter,stop_iter,interval)
     restore_iters = reversed(restore_iters)
 
+    print("The following parameters will be applied for CNN testing:")
+    print("Training level: " + str(level))
+    print("Path to Raw-to-RGB model network: " + model_dir)
+    print("Triple exposure: " + str(triple_exposure))
+
     return out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level
 
+def process_evaluate_model_args(arguments):
+    dataset_dir = 'raw_images/'
+    model_dir = 'models/single_exp/'
+    dslr_dir = 'fujifilm/'
+    phone_dir = 'mediatek_raw/'
+    over_dir = 'mediatek_raw_over/'
+    under_dir = 'mediatek_raw_under/'
+    vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
+    batch_size = 10
+    use_gpu = True
+    level = 5
+    interval = 0
+    use_gpu = True
+    triple_exposure = False
+    level = 5
+
+    for args in arguments:
+        if args.startswith("dataset_dir"):
+            dataset_dir = args.split("=")[1]
+
+        if args.startswith("dslr_dir"):
+            dslr_dir = args.split("=")[1]
+
+        if args.startswith("phone_dir"):
+            phone_dir = args.split("=")[1]
+
+        if args.startswith("over_dir"):
+            over_dir = args.split("=")[1]
+
+        if args.startswith("under_dir"):
+            under_dir = args.split("=")[1]
+
+        if args.startswith("dataset_dir"):
+            dataset_dir = args.split("=")[1]
+
+        if args.startswith("vgg_dir"):
+            vgg_dir = args.split("=")[1]
+
+        if args.startswith("out_dir"):
+            out_dir = args.split("=")[1]
+
+        if args.startswith("batch_size"):
+            batch_size = int(args.split("=")[1])
+
+        if args.startswith("model_dir"):
+            model_dir = args.split("=")[1]
+
+        if args.startswith("start_iter"):
+            start_iter = int(args.split("=")[1])
+
+        if args.startswith("stop_iter"):
+            stop_iter = int(args.split("=")[1])
+
+        if args.startswith("interval"):
+            interval = int(args.split("=")[1])
+
+        if args.startswith("use_gpu"):
+            use_gpu = args.split("=")[1]
+
+        if args.startswith("triple_exposure"):
+            triple_exposure = eval(args.split("=")[1])
+
+        if args.startswith("level"):
+            level = int(args.split("=")[1])
+
+    if interval == 0:
+        restore_iters = [int((model_file.split("_")[-1]).split(".")[0])
+                    for model_file in os.listdir(model_dir)
+                    if model_file.startswith("pynet_level_" + str(level))].sort()
+    else:
+        restore_iters = range(start_iter,stop_iter,interval)
+    restore_iters = reversed(restore_iters)
+
+    print("The following parameters will be applied for CNN evaluation:")
+    print("Training level: " + str(level))
+    print("Batch size: " + str(batch_size))
+    print("Path to Raw-to-RGB model network: " + model_dir)
+    print("Path to the dataset: " + dataset_dir)
+    print("Path to VGG-19 network: " + vgg_dir)
+    print("Triple exposure: " + str(triple_exposure))
+    if triple_exposure:
+        print("Path to the over dir: " + over_dir)
+        print("Path to the under dir: " + under_dir)
+
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level
 
 def get_last_iter(level, model_dir):
 

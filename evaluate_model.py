@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 from datetime import datetime
 from tqdm import tqdm
+import sys
 
 from load_dataset import load_test_data
 from model import PyNET
@@ -9,9 +10,8 @@ from model import PyNET
 import utils
 import vgg
 
-triple_exposure = False
+dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level = utils.process_evaluate_model_args(sys.argv)
 
-level = 3
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 PATCH_WIDTH, PATCH_HEIGHT = 128, 128
 PATCH_DEPTH = 4
@@ -21,17 +21,6 @@ TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
 TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE)
 TARGET_DEPTH = 3
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
-
-dataset_dir = 'raw_images/'
-model_dir = 'models/single_exp/'
-dslr_dir = 'fujifilm/'
-phone_dir = 'mediatek_raw/'
-over_dir = 'mediatek_raw_over/'
-under_dir = 'mediatek_raw_under/'
-vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
-restore_iters = range(5600,25600,200)
-batch_size = 10
-use_gpu = True
 
 print("Loading testing data...")
 test_data, test_answ = load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)
@@ -78,9 +67,10 @@ with tf.compat.v1.Session(config=config) as sess:
     # loss_text.append("loss_color")
 
     ## SSIM loss
-    # loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
-    # loss_list.append(loss_ssim)
-    # loss_text.append("loss_ssim")
+    if level < 5:
+        loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
+        loss_list.append(loss_ssim)
+        loss_text.append("loss_ssim")
 
     ## Content loss
     CONTENT_LAYER = 'relu5_4'
@@ -90,7 +80,8 @@ with tf.compat.v1.Session(config=config) as sess:
     loss_list.append(loss_content)
     loss_text.append("loss_content")
 
-
+    logs = open(model_dir + "test_" + str(min(restore_iters)) + "-" + str(max(restore_iters)) + ".txt", "w+")
+    logs.close()
 
     for restore_iter in tqdm(restore_iters):
         test_losses_gen = np.zeros((1, len(loss_text)))
@@ -112,4 +103,10 @@ with tf.compat.v1.Session(config=config) as sess:
             logs_gen += "%s: %.4g; " % (loss, test_losses_gen[0][idx])
         logs_gen += '\n'
         print(logs_gen)
+
+        logs = open(model_dir + "test_" + str(min(restore_iters)) + "-" + str(max(restore_iters)) + ".txt", "w+")
+        logs.write(logs_gen)
+        logs.write('\n')
+        logs.close()
+
 print('total test time:', datetime.now() - time_start)
