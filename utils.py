@@ -29,7 +29,8 @@ def process_command_args(arguments):
     dataset_dir = 'raw_images/'
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
 
-    fac_mse = 100
+    default_facs = True
+    fac_mse = 0
     fac_content = 0
     fac_ssim = 0
     fac_color = 0
@@ -80,12 +81,16 @@ def process_command_args(arguments):
         
         if args.startswith("fac_content"):
             fac_content = float(args.split("=")[1])
+            default_facs = False
         if args.startswith("fac_mse"):
             fac_mse = float(args.split("=")[1])
+            default_facs = False
         if args.startswith("fac_ssim"):
             fac_ssim = float(args.split("=")[1])
+            default_facs = False
         if args.startswith("fac_color"):
             fac_color = float(args.split("=")[1])
+            default_facs = False
 
         if args.startswith("triple_exposure"):
             triple_exposure = eval(args.split("=")[1])
@@ -108,12 +113,14 @@ def process_command_args(arguments):
             print("Aborting the training.")
             sys.exit()
 
-    if level == 3 or level == 2:
-        fac_content = 1
-    if level == 1:
-        fac_mse, fac_content = 50, 1
-    if level == 0:
-        fac_mse, fac_content, fac_ssim = 20, 1, 20
+    if default_facs:
+        fac_mse = 100
+        if level == 3 or level == 2:
+            fac_content = 1
+        if level == 1:
+            fac_mse, fac_content = 50, 1
+        if level == 0:
+            fac_mse, fac_content, fac_ssim = 20, 1, 20
 
     print("The following parameters will be applied for CNN training:")
 
