@@ -39,6 +39,9 @@ TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 # Disable gpu if specified
 config = tf.compat.v1.ConfigProto(device_count={'GPU': 0}) if use_gpu == False else None
 
+if not os.path.isdir("results/full-resolution/"+ out_dir):
+    os.makedirs("results/full-resolution/"+ out_dir, exist_ok=True)
+
 with tf.compat.v1.Session(config=config) as sess:
 
     # Placeholders for test data

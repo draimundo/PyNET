@@ -178,11 +178,9 @@ def process_test_model_args(arguments):
             level = int(args.split("=")[1])
 
     if interval == 0:
-        print(os.listdir(model_dir))
         restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
                     if model_file.startswith("pynet_level_" + str(level))])))
-        print(restore_iters)
     else:
         restore_iters = range(start_iter,stop_iter,interval)
     restore_iters = reversed(restore_iters)
@@ -260,11 +258,9 @@ def process_evaluate_model_args(arguments):
             level = int(args.split("=")[1])
 
     if interval == 0:
-        print(os.listdir(model_dir))
         restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
                     if model_file.startswith("pynet_level_" + str(level))])))
-        print(restore_iters)
     else:
         restore_iters = range(start_iter,stop_iter,interval)
     restore_iters = reversed(restore_iters)
