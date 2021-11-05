@@ -7,7 +7,7 @@ import numpy as np
 import sys
 import os
 
-NUM_DEFAULT_TRAIN_ITERS = [100000, 35000, 20000, 20000, 5000, 5000]
+NUM_DEFAULT_TRAIN_ITERS = [150000, 50000, 30000, 30000, 10000, 10000]
 
 
 def process_command_args(arguments):
@@ -20,7 +20,7 @@ def process_command_args(arguments):
     train_size = 5000
     learning_rate = 5e-5
 
-    eval_step = 500
+    eval_step = 1000
     restore_iter = None
     num_train_iters = None
     save_mid_imgs = False
