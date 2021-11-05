@@ -21,7 +21,7 @@ def process_command_args(arguments):
     learning_rate = 5e-5
 
     eval_step = 1000
-    restore_iter = None
+    restore_iter = 0
     num_train_iters = None
     save_mid_imgs = False
 
@@ -104,7 +104,7 @@ def process_command_args(arguments):
     if num_train_iters is None:
         num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
 
-    if restore_iter is None and level < 5:
+    if restore_iter is 0 and level < 5:
         restore_iter = get_last_iter(level + 1, model_dir)
         print(restore_iter)
         num_train_iters += restore_iter
