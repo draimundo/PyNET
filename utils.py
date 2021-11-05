@@ -104,7 +104,7 @@ def process_command_args(arguments):
     if num_train_iters is None:
         num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
 
-    if restore_iter is 0 and level < 5:
+    if restore_iter == 0 and level < 5:
         restore_iter = get_last_iter(level + 1, model_dir)
         print(restore_iter)
         num_train_iters += restore_iter
@@ -178,9 +178,11 @@ def process_test_model_args(arguments):
             level = int(args.split("=")[1])
 
     if interval == 0:
-        restore_iters = [int((model_file.split("_")[-1]).split(".")[0])
+        print(os.listdir(model_dir))
+        restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
-                    if model_file.startswith("pynet_level_" + str(level))].sort()
+                    if model_file.startswith("pynet_level_" + str(level))])))
+        print(restore_iters)
     else:
         restore_iters = range(start_iter,stop_iter,interval)
     restore_iters = reversed(restore_iters)
@@ -230,9 +232,6 @@ def process_evaluate_model_args(arguments):
         if args.startswith("vgg_dir"):
             vgg_dir = args.split("=")[1]
 
-        if args.startswith("out_dir"):
-            out_dir = args.split("=")[1]
-
         if args.startswith("batch_size"):
             batch_size = int(args.split("=")[1])
 
@@ -248,6 +247,9 @@ def process_evaluate_model_args(arguments):
         if args.startswith("interval"):
             interval = int(args.split("=")[1])
 
+        if args.startswith("interval"):
+            interval = int(args.split("=")[1])
+
         if args.startswith("use_gpu"):
             use_gpu = args.split("=")[1]
 
@@ -258,9 +260,11 @@ def process_evaluate_model_args(arguments):
             level = int(args.split("=")[1])
 
     if interval == 0:
-        restore_iters = [int((model_file.split("_")[-1]).split(".")[0])
+        print(os.listdir(model_dir))
+        restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
-                    if model_file.startswith("pynet_level_" + str(level))].sort()
+                    if model_file.startswith("pynet_level_" + str(level))])))
+        print(restore_iters)
     else:
         restore_iters = range(start_iter,stop_iter,interval)
     restore_iters = reversed(restore_iters)
@@ -276,7 +280,7 @@ def process_evaluate_model_args(arguments):
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
 
-    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level
 
 def get_last_iter(level, model_dir):
 

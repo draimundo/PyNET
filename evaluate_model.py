@@ -10,7 +10,7 @@ from model import PyNET
 import utils
 import vgg
 
-dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level = utils.process_evaluate_model_args(sys.argv)
+dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level = utils.process_evaluate_model_args(sys.argv)
 
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 PATCH_WIDTH, PATCH_HEIGHT = 128, 128
