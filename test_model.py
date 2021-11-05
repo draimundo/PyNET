@@ -6,26 +6,16 @@ import imageio
 from tqdm import tqdm
 import os
 import rawpy
+import utils
+import sys
 
 from model import PyNET
 
 from load_dataset import extract_bayer_channels
 
-dataset_dir = 'raw_images/'
-out_dir = 'single_exp/'
-model_dir = 'models/single_exp/'
-dslr_dir = 'fujifilm/'
-phone_dir = 'mediatek_raw/'
-over_dir = 'mediatek_raw_over/'
-under_dir = 'mediatek_raw_under/'
-vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
-restore_iters = range(44000,94000,500)
-use_gpu = False
-triple_exposure = False
+out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level = utils.process_test_model_args(sys.argv)
 
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
-
-level = 1
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 MAX_SCALE = float(1) / (2 ** (5 - 1))
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
@@ -108,7 +98,7 @@ with tf.compat.v1.Session(config=config) as sess:
     for restore_iter in tqdm(restore_iters):
         saver.restore(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(restore_iter) + ".ckpt")
         
-        for i, photo in tqdm(enumerate(test_photos)):
+        for i, photo in enumerate(test_photos):
             enhanced_tensor = sess.run(enhanced, feed_dict={phone_: [images[i,...]]})
             enhanced_image = np.reshape(enhanced_tensor, [TARGET_HEIGHT, TARGET_WIDTH, 3])
 

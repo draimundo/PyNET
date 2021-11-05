@@ -144,39 +144,47 @@ def process_command_args(arguments):
 
 
 def process_test_model_args(arguments):
-
-    level = 0
-    restore_iter = None
-
-    dataset_dir = 'raw_images/'
-    use_gpu = "true"
-
-    orig_model = "false"
+    out_dir = 'single_exp/'
+    model_dir = 'models/single_exp/'
+    interval = 0
+    use_gpu = True
+    triple_exposure = False
+    level = 5
 
     for args in arguments:
+        if args.startswith("out_dir"):
+            out_dir = args.split("=")[1]
 
-        if args.startswith("level"):
-            level = int(args.split("=")[1])
+        if args.startswith("model_dir"):
+            model_dir = args.split("=")[1]
 
-        if args.startswith("dataset_dir"):
-            dataset_dir = args.split("=")[1]
+        if args.startswith("start_iter"):
+            start_iter = int(args.split("=")[1])
 
-        if args.startswith("restore_iter"):
-            restore_iter = int(args.split("=")[1])
+        if args.startswith("stop_iter"):
+            stop_iter = int(args.split("=")[1])
+
+        if args.startswith("interval"):
+            interval = int(args.split("=")[1])
 
         if args.startswith("use_gpu"):
             use_gpu = args.split("=")[1]
 
-        if args.startswith("orig"):
-            orig_model = args.split("=")[1]
+        if args.startswith("triple_exposure"):
+            triple_exposure = eval(args.split("=")[1])
 
-    if restore_iter is None and orig_model == "false":
-        restore_iter = get_last_iter(level)
-        if restore_iter == -1:
-            print("Error: Cannot find any pre-trained models for PyNET's level " + str(level) + ".")
-            sys.exit()
+        if args.startswith("level"):
+            level = int(args.split("=")[1])
 
-    return level, restore_iter, dataset_dir, use_gpu, orig_model
+    if interval == 0:
+        restore_iters = [int((model_file.split("_")[-1]).split(".")[0])
+                    for model_file in os.listdir(model_dir)
+                    if model_file.startswith("pynet_level_" + str(level))].sort()
+    else:
+        restore_iters = range(start_iter,stop_iter,interval)
+    restore_iters = reversed(restore_iters)
+
+    return out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level
 
 
 def get_last_iter(level, model_dir):
