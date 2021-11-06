@@ -80,7 +80,7 @@ with tf.compat.v1.Session(config=config) as sess:
     loss_list.append(loss_content)
     loss_text.append("loss_content")
 
-    logs = open(model_dir + "test_" + "level" + str(level) + "iters:" + str(min(restore_iters)) + "-" + str(max(restore_iters)) + ".txt", "w+")
+    logs = open(model_dir + "test_" + "level" + str(level) + ".txt", "w+")
     logs.close()
 
     for restore_iter in tqdm(restore_iters):
@@ -104,7 +104,7 @@ with tf.compat.v1.Session(config=config) as sess:
         logs_gen += '\n'
         print(logs_gen)
 
-        logs = open(model_dir + "test_" + "level" + str(level) + "iters:" + str(min(restore_iters)) + "-" + str(max(restore_iters)) + ".txt", "w+")
+        logs = open(model_dir + "test_" + "level" + str(level) + ".txt", "w+")
         logs.write(logs_gen)
         logs.write('\n')
         logs.close()

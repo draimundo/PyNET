@@ -7,7 +7,7 @@ import numpy as np
 import sys
 import os
 
-NUM_DEFAULT_TRAIN_ITERS = [200000, 100000, 50000, 50000, 20000, 20000]
+NUM_DEFAULT_TRAIN_ITERS = [200000, 200000, 200000, 200000, 100000, 100000]
 
 
 def process_command_args(arguments):
