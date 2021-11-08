@@ -10,28 +10,28 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
         # -----------------------------------------
         # Downsampling layers
 
-        conv_l1_d1 = _conv_multi_block(input, 3, num_maps=32, instance_norm=False)              # 224 -> 224
-        pool1 = max_pool(conv_l1_d1, 2)                                                         # 224 -> 112
+        conv_l1_d1 = _conv_multi_block(input, 3, num_maps=32, instance_norm=False)              # 128 -> 128
+        pool1 = max_pool(conv_l1_d1, 2)                                                         # 128 -> 64
 
-        conv_l2_d1 = _conv_multi_block(pool1, 3, num_maps=64, instance_norm=instance_norm)      # 112 -> 112
-        pool2 = max_pool(conv_l2_d1, 2)                                                         # 112 -> 56
+        conv_l2_d1 = _conv_multi_block(pool1, 3, num_maps=64, instance_norm=instance_norm)      # 64 -> 64
+        pool2 = max_pool(conv_l2_d1, 2)                                                         # 64 -> 32
 
-        conv_l3_d1 = _conv_multi_block(pool2, 3, num_maps=128, instance_norm=instance_norm)     # 56 -> 56
-        pool3 = max_pool(conv_l3_d1, 2)                                                         # 56 -> 28
+        conv_l3_d1 = _conv_multi_block(pool2, 3, num_maps=128, instance_norm=instance_norm)     # 32 -> 32
+        pool3 = max_pool(conv_l3_d1, 2)                                                         # 32 -> 16
 
-        conv_l4_d1 = _conv_multi_block(pool3, 3, num_maps=256, instance_norm=instance_norm)     # 28 -> 28
-        pool4 = max_pool(conv_l4_d1, 2)                                                         # 28 -> 14
+        conv_l4_d1 = _conv_multi_block(pool3, 3, num_maps=256, instance_norm=instance_norm)     # 16 -> 16
+        pool4 = max_pool(conv_l4_d1, 2)                                                         # 16 -> 8
 
         # -----------------------------------------
-        # Processing: Level 5,  Input size: 14 x 14
+        # Processing: Level 5,  Input size: 8 x 8
 
         conv_l5_d1 = _conv_multi_block(pool4, 3, num_maps=512, instance_norm=instance_norm)
         conv_l5_d2 = _conv_multi_block(conv_l5_d1, 3, num_maps=512, instance_norm=instance_norm) + conv_l5_d1
         conv_l5_d3 = _conv_multi_block(conv_l5_d2, 3, num_maps=512, instance_norm=instance_norm) + conv_l5_d2
         conv_l5_d4 = _conv_multi_block(conv_l5_d3, 3, num_maps=512, instance_norm=instance_norm)
 
-        conv_t4a = _conv_tranpose_layer(conv_l5_d4, 256, 3, 2)      # 14 -> 28
-        conv_t4b = _conv_tranpose_layer(conv_l5_d4, 256, 3, 2)      # 14 -> 28
+        conv_t4a = _conv_tranpose_layer(conv_l5_d4, 256, 3, 2)      # 8 -> 16
+        conv_t4b = _conv_tranpose_layer(conv_l5_d4, 256, 3, 2)      # 8 -> 16
 
         # -> Output: Level 5
 
@@ -166,6 +166,18 @@ def _conv_multi_block(input, max_size, num_maps, instance_norm):
 
     return output_tensor
 
+def fourierDiscrim(input):
+    with tf.compat.v1.variable_scope("fourierDiscrim"):
+        
+        flat = tf.compat.v1.layers.flatten(input)
+
+        fc1 = _fully_connected_layer(flat, 1024)
+        fc2 = _fully_connected_layer(fc1, 1024)
+        fc3 = _fully_connected_layer(fc2, 1024)
+        fc4 = _fully_connected_layer(fc4, 1024)
+
+        out = tf.nn.softmax(_fully_connected_layer(fc4, 2, relu=False))
+    return out
 
 def stack(x, y):
     return tf.concat([x, y], 3)
@@ -191,6 +203,19 @@ def _conv_layer(net, num_filters, filter_size, strides, relu=True, instance_norm
 
     return net
 
+def _fully_connected_layer(net, num_weights, relu=True)
+    batch, channels = [i for i in net.get_shape()]
+    weights_shape = [channels, num_weights]
+
+    weights = tf.Variable(tf.random.truncated_normal(weights_shape, stddev=0.01, seed=1), dtype=tf.float32)
+    bias = tf.Variable(tf.constant(0.01, shape=[num_weights]))
+
+    out = tf.matmul(net, weights) + bias
+
+    if relu:
+        out = tf.compat.v1.nn.leaky_relu(out)
+
+    return out
 
 def _instance_norm(net):
 
