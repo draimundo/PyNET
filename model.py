@@ -134,6 +134,31 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
 
     return output_l0, output_l1, output_l2, output_l3, output_l4, output_l5
 
+def adversarial(image_):
+    with tf.compat.v1.variable_scope("discriminator"):
+        conv1 = _conv_layer(image_, 48, 11, 4, instance_norm = False)
+        conv2 = _conv_layer(conv1, 128, 5, 2)
+        conv3 = _conv_layer(conv2, 192, 3, 1)
+        conv4 = _conv_layer(conv3, 192, 3, 1)
+        conv5 = _conv_layer(conv4, 128, 3, 2)
+        
+        flat_size = 128 * 16 * 16
+        conv5_flat = tf.reshape(conv5, [-1, flat_size])
+
+        W_fc = tf.Variable(tf.compat.v1.truncated_normal([flat_size, 1024], stddev=0.01))
+        bias_fc = tf.Variable(tf.constant(0.01, shape=[1024]))
+
+        fc = tf.compat.v1.nn.leaky_relu(tf.matmul(conv5_flat, W_fc) + bias_fc)
+
+        W_out = tf.Variable(tf.compat.v1.truncated_normal([1024, 2], stddev=0.01))
+        bias_out = tf.Variable(tf.constant(0.01, shape=[2]))
+
+        adv_out = tf.nn.softmax(tf.matmul(fc, W_out) + bias_out)
+    
+    return adv_out
+
+
+def _upsample_switch
 
 
 def _conv_multi_block(input, max_size, num_maps, instance_norm):
@@ -174,7 +199,7 @@ def fourierDiscrim(input):
         fc1 = _fully_connected_layer(flat, 1024)
         fc2 = _fully_connected_layer(fc1, 1024)
         fc3 = _fully_connected_layer(fc2, 1024)
-        fc4 = _fully_connected_layer(fc4, 1024)
+        fc4 = _fully_connected_layer(fc3, 1024)
 
         out = tf.nn.softmax(_fully_connected_layer(fc4, 2, relu=False))
     return out
@@ -203,7 +228,7 @@ def _conv_layer(net, num_filters, filter_size, strides, relu=True, instance_norm
 
     return net
 
-def _fully_connected_layer(net, num_weights, relu=True)
+def _fully_connected_layer(net, num_weights, relu=True):
     batch, channels = [i for i in net.get_shape()]
     weights_shape = [channels, num_weights]
 
@@ -259,6 +284,51 @@ def _conv_tranpose_layer(net, num_filters, filter_size, strides):
 
     return tf.compat.v1.nn.leaky_relu(net)
 
+def _conv_pixel_shuffle(net, num_filters, filter_size, factor):
+    weights_init = _conv_init_vars(net, num_filters*factor*2, filter_size)
+
+    strides_shape = [1, 1, 1, 1]
+    net = tf.nn.conv2d(net, weights_init, strides_shape, padding='SAME')
+
+    net = tf.nn.depth_to_space(net, factor)
+
+    return tf.compat.v1.nn.leaky_relu(net)
+
+def _pixel_dcl(net, num_filters, filter_size, d_format='NHWC'):
+    axis = (d_format.index('H'), d_format.index('W'))
+
+    conv_0 = _conv_layer(net, num_filters, filter_size, 1, relu=False)
+    conv_1 = _conv_layer(conv_0, num_filters, filter_size, 1, relu=False)
+
+    dil_conv_0 = _dilate(conv_0, axis, (0,0))
+    dil_conv_1 = _dilate(conv_1, axis, (1,1))
+
+    conv_a = tf.add(dil_conv_0, dil_conv_1)
+
+    weights = _conv_init_vars(conv_a, num_filters, filter_size)
+    weights = tf.multiply(weights, _get_mask([filter_size, filter_size, num_filters, num_filters]))
+    conv_b =  tf.nn.conv2d(conv_a, weights, strides=[1,1,1,1], padding='SAME')
+
+    out = tf.add(conv_a, conv_b)
+
+    return tf.compat.v1.nn.leaky_relu(out)
+
+def _dilate(net, axes, shifts):
+    for index, axis in enumerate(axes):
+        elements = tf.unstack(net, axis=axis)
+        zeros = tf.zeros_like(elements[0])
+        for element_index in range(len(elements), 0, -1):
+            elements.insert(element_index-shifts[index], zeros)
+        net = tf.stack(elements, axis=axis)
+    return net
+
+def _get_mask(shape):
+    new_shape = (np.prod(shape[:-2]), shape[-2], shape[-1])
+    mask = np.ones(new_shape, dtype=np.float32)
+    for i in range(0, new_shape[0], 2):
+        mask[i, :, :] = 0
+    mask = np.reshape(mask, shape, 'F')
+    return tf.constant(mask, dtype=tf.float32)
 
 def max_pool(x, n):
     return tf.nn.max_pool(x, ksize=[1, n, n, 1], strides=[1, n, n, 1], padding='VALID')

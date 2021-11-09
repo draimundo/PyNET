@@ -107,11 +107,12 @@ def process_command_args(arguments):
     if restore_iter == 0 and level < 5:
         restore_iter = get_last_iter(level + 1, model_dir)
         print(restore_iter)
-        num_train_iters += restore_iter
+        
         if restore_iter == -1:
             print("Error: Cannot find any pre-trained models for PyNET's level " + str(level + 1) + ".")
             print("Aborting the training.")
             sys.exit()
+    num_train_iters += restore_iter
 
     if default_facs:
         fac_mse = 100
