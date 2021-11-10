@@ -4,12 +4,12 @@ import tensorflow as tf
 import numpy as np
 
 
-def PyNET(input, instance_norm=True, instance_norm_level_1=False):
+def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="transpose"):
     with tf.compat.v1.variable_scope("generator"):
+        
 
         # -----------------------------------------
         # Downsampling layers
-
         conv_l1_d1 = _conv_multi_block(input, 3, num_maps=32, instance_norm=False)              # 128 -> 128
         pool1 = max_pool(conv_l1_d1, 2)                                                         # 128 -> 64
 
@@ -24,23 +24,20 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
 
         # -----------------------------------------
         # Processing: Level 5,  Input size: 8 x 8
-
         conv_l5_d1 = _conv_multi_block(pool4, 3, num_maps=512, instance_norm=instance_norm)
         conv_l5_d2 = _conv_multi_block(conv_l5_d1, 3, num_maps=512, instance_norm=instance_norm) + conv_l5_d1
         conv_l5_d3 = _conv_multi_block(conv_l5_d2, 3, num_maps=512, instance_norm=instance_norm) + conv_l5_d2
         conv_l5_d4 = _conv_multi_block(conv_l5_d3, 3, num_maps=512, instance_norm=instance_norm)
 
-        conv_t4a = _conv_tranpose_layer(conv_l5_d4, 256, 3, 2)      # 8 -> 16
-        conv_t4b = _conv_tranpose_layer(conv_l5_d4, 256, 3, 2)      # 8 -> 16
+        conv_t4a = _upscale(conv_l5_d4, 256, 3, 2, upscale)      # 8 -> 16
+        conv_t4b = _upscale(conv_l5_d4, 256, 3, 2, upscale)      # 8 -> 16
 
         # -> Output: Level 5
-
         conv_l5_out = _conv_layer(conv_l5_d4, 3, 3, 1, relu=False, instance_norm=False)
         output_l5 = tf.nn.tanh(conv_l5_out) * 0.58 + 0.5
 
         # -----------------------------------------
         # Processing: Level 4,  Input size: 28 x 28
-
         conv_l4_d2 = stack(conv_l4_d1, conv_t4a)
         conv_l4_d3 = _conv_multi_block(conv_l4_d2, 3, num_maps=256, instance_norm=instance_norm)
         conv_l4_d4 = _conv_multi_block(conv_l4_d3, 3, num_maps=256, instance_norm=instance_norm) + conv_l4_d3
@@ -49,17 +46,15 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
 
         conv_l4_d7 = _conv_multi_block(conv_l4_d6, 3, num_maps=256, instance_norm=instance_norm)
 
-        conv_t3a = _conv_tranpose_layer(conv_l4_d7, 128, 3, 2)      # 28 -> 56
-        conv_t3b = _conv_tranpose_layer(conv_l4_d7, 128, 3, 2)      # 28 -> 56
+        conv_t3a = _upscale(conv_l4_d7, 128, 3, 2, upscale)      # 28 -> 56
+        conv_t3b = _upscale(conv_l4_d7, 128, 3, 2, upscale)      # 28 -> 56
 
         # -> Output: Level 4
-
         conv_l4_out = _conv_layer(conv_l4_d7, 3, 3, 1, relu=False, instance_norm=False)
         output_l4 = tf.nn.tanh(conv_l4_out) * 0.58 + 0.5
 
         # -----------------------------------------
         # Processing: Level 3,  Input size: 56 x 56
-
         conv_l3_d2 = stack(conv_l3_d1, conv_t3a)
         conv_l3_d3 = _conv_multi_block(conv_l3_d2, 5, num_maps=128, instance_norm=instance_norm) + conv_l3_d2
         conv_l3_d4 = _conv_multi_block(conv_l3_d3, 5, num_maps=128, instance_norm=instance_norm) + conv_l3_d3
@@ -69,17 +64,15 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
 
         conv_l3_d8 = _conv_multi_block(conv_l3_d7, 3, num_maps=128, instance_norm=instance_norm)
 
-        conv_t2a = _conv_tranpose_layer(conv_l3_d8, 64, 3, 2)       # 56 -> 112
-        conv_t2b = _conv_tranpose_layer(conv_l3_d8, 64, 3, 2)       # 56 -> 112
+        conv_t2a = _upscale(conv_l3_d8, 64, 3, 2, upscale)       # 56 -> 112
+        conv_t2b = _upscale(conv_l3_d8, 64, 3, 2, upscale)       # 56 -> 112
 
         # -> Output: Level 3
-
         conv_l3_out = _conv_layer(conv_l3_d8, 3, 3, 1, relu=False, instance_norm=False)
         output_l3 = tf.nn.tanh(conv_l3_out) * 0.58 + 0.5
 
         # -------------------------------------------
         # Processing: Level 2,  Input size: 112 x 112
-
         conv_l2_d2 = stack(conv_l2_d1, conv_t2a)
         conv_l2_d3 = stack(_conv_multi_block(conv_l2_d2, 5, num_maps=64, instance_norm=instance_norm), conv_l2_d1)
 
@@ -91,17 +84,15 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
         conv_l2_d8 = stack(_conv_multi_block(conv_l2_d7, 5, num_maps=64, instance_norm=instance_norm), conv_t2b)
         conv_l2_d9 = _conv_multi_block(conv_l2_d8, 3, num_maps=64, instance_norm=instance_norm)
 
-        conv_t1a = _conv_tranpose_layer(conv_l2_d9, 32, 3, 2)       # 112 -> 224
-        conv_t1b = _conv_tranpose_layer(conv_l2_d9, 32, 3, 2)       # 112 -> 224
+        conv_t1a = _upscale(conv_l2_d9, 32, 3, 2, upscale)       # 112 -> 224
+        conv_t1b = _upscale(conv_l2_d9, 32, 3, 2, upscale)       # 112 -> 224
 
         # -> Output: Level 2
-
         conv_l2_out = _conv_layer(conv_l2_d9, 3, 3, 1, relu=False, instance_norm=False)
         output_l2 = tf.nn.tanh(conv_l2_out) * 0.58 + 0.5
 
         # -------------------------------------------
         # Processing: Level 1,  Input size: 224 x 224
-
         conv_l1_d2 = stack(conv_l1_d1, conv_t1a)
         conv_l1_d3 = stack(_conv_multi_block(conv_l1_d2, 5, num_maps=32, instance_norm=False), conv_l1_d1)
 
@@ -120,19 +111,32 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False):
         conv_l1_d12 = _conv_multi_block(conv_l1_d11, 3, num_maps=32, instance_norm=False)
 
         # -> Output: Level 1
-
         conv_l1_out = _conv_layer(conv_l1_d12, 3, 3, 1, relu=False, instance_norm=False)
         output_l1 = tf.nn.tanh(conv_l1_out) * 0.58 + 0.5
 
         # ----------------------------------------------------------
         # Processing: Level 0 (x2 upscaling),  Input size: 224 x 224
 
-        conv_l0 = _conv_tranpose_layer(conv_l1_d12, 8, 3, 2)        # 224 -> 448
+        conv_l0 = _upscale(conv_l1_d12, 8, 3, 2, upscale)        # 224 -> 448
         conv_l0_out = _conv_layer(conv_l0, 3, 3, 1, relu=False, instance_norm=False)
 
         output_l0 = tf.nn.tanh(conv_l0_out) * 0.58 + 0.5
 
     return output_l0, output_l1, output_l2, output_l3, output_l4, output_l5
+
+
+
+def _upscale(net, num_filters, filter_size, factor, method):
+    if method == "transpose":
+        return _conv_tranpose_layer(net, num_filters, filter_size, factor)
+    elif method == "shuffle":
+        return _conv_pixel_shuffle(net, num_filters, filter_size, factor)
+    elif method == "dcl":
+        return _pixel_dcl(net, num_filters, filter_size)
+    else:
+        print("Unrecognized upscaling method")
+
+
 
 def adversarial(image_):
     with tf.compat.v1.variable_scope("discriminator"):
@@ -156,9 +160,6 @@ def adversarial(image_):
         adv_out = tf.nn.softmax(tf.matmul(fc, W_out) + bias_out)
     
     return adv_out
-
-
-def _upsample_switch
 
 
 def _conv_multi_block(input, max_size, num_maps, instance_norm):

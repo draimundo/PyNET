@@ -4,6 +4,7 @@ import imageio
 import tensorflow as tf
 import numpy as np
 import sys
+import os
 
 from tqdm import tqdm
 from load_dataset import load_training_batch, load_val_data
@@ -17,7 +18,7 @@ import vgg
 # Processing command arguments
 
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
-dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color\
+dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color, upscale\
         = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -48,7 +49,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     # Get the processed enhanced image
 
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
-        PyNET(phone_, instance_norm=True, instance_norm_level_1=False)
+        PyNET(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale)
 
     if level == 5:
         enhanced = output_l5
@@ -119,6 +120,9 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     sess.run(tf.compat.v1.global_variables_initializer())
 
     saver = tf.compat.v1.train.Saver(var_list=generator_vars, max_to_keep=100)
+
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir, exist_ok=True)
 
     if level < 5:
         print("Restoring Variables")

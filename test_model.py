@@ -13,7 +13,7 @@ from model import PyNET
 
 from load_dataset import extract_bayer_channels
 
-out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level = utils.process_test_model_args(sys.argv)
+out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale = utils.process_test_model_args(sys.argv)
 
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
@@ -49,7 +49,7 @@ with tf.compat.v1.Session(config=config) as sess:
 
     # generate enhanced image
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 =\
-        PyNET(phone_, instance_norm=True, instance_norm_level_1=False)
+        PyNET(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale)
 
     if level == 5:
         enhanced = output_l5
