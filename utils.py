@@ -7,8 +7,8 @@ import numpy as np
 import sys
 import os
 
-NUM_DEFAULT_TRAIN_ITERS = [200000, 200000, 200000, 200000, 100000, 100000]
-
+NUM_DEFAULT_TRAIN_ITERS = [200000, 200000, 200000, 200000, 2000, 1000]
+DEFAULT_BATCH_SIZE = [10, 12, 18, 48, 50, 50]
 
 def process_command_args(arguments):
 
@@ -37,7 +37,9 @@ def process_command_args(arguments):
 
     over_dir = 'mediatek_raw_over/'
     under_dir = 'mediatek_raw_under/'
-    triple_exposure = True
+    triple_exposure = False
+
+    upscale = 'transpose'
 
 
 
@@ -101,6 +103,9 @@ def process_command_args(arguments):
         if args.startswith("under_dir"):
             under_dir = args.split("=")[1]
 
+        if args.startswith("upscale"):
+            upscale = args.split("=")[1]
+
     if num_train_iters is None:
         num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
 
@@ -133,6 +138,7 @@ def process_command_args(arguments):
     print("Path to Raw-to-RGB model network: " + model_dir)
     print("Path to the dataset: " + dataset_dir)
     print("Path to VGG-19 network: " + vgg_dir)
+    print("Upscaling method: " + upscale)
     print("Triple exposure: " + str(triple_exposure))
     if triple_exposure:
         print("Path to the over dir: " + over_dir)
@@ -140,7 +146,7 @@ def process_command_args(arguments):
     print("Loss function=" + " content:" + str(fac_content) + " +MSE:" + str(fac_mse) + " +SSIM:" + str(fac_ssim) + " +color:" + str(fac_color))
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
-            dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color
+            dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color, upscale
 
 
 def process_test_model_args(arguments):
@@ -150,6 +156,7 @@ def process_test_model_args(arguments):
     use_gpu = True
     triple_exposure = False
     level = 5
+    upscale = "transpose"
 
     for args in arguments:
 
@@ -178,6 +185,9 @@ def process_test_model_args(arguments):
         if args.startswith("level"):
             level = int(args.split("=")[1])
 
+        if args.startswith("upscale"):
+            upscale = args.split("=")[1]
+
     if interval == 0:
         restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
@@ -189,9 +199,10 @@ def process_test_model_args(arguments):
     print("The following parameters will be applied for CNN testing:")
     print("Training level: " + str(level))
     print("Path to Raw-to-RGB model network: " + model_dir)
+    print("Upscaling method: " + upscale)
     print("Triple exposure: " + str(triple_exposure))
 
-    return out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level
+    return out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale
 
 def process_evaluate_model_args(arguments):
     dataset_dir = 'raw_images/'
@@ -207,7 +218,7 @@ def process_evaluate_model_args(arguments):
     interval = 0
     use_gpu = True
     triple_exposure = False
-    level = 5
+    upscale = "transpose"
 
     for args in arguments:
         if args.startswith("dataset_dir"):
@@ -258,6 +269,9 @@ def process_evaluate_model_args(arguments):
         if args.startswith("level"):
             level = int(args.split("=")[1])
 
+        if args.startswith("upscale"):
+            upscale = args.split("=")[1]
+
     if interval == 0:
         restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
@@ -272,12 +286,13 @@ def process_evaluate_model_args(arguments):
     print("Path to Raw-to-RGB model network: " + model_dir)
     print("Path to the dataset: " + dataset_dir)
     print("Path to VGG-19 network: " + vgg_dir)
+    print("Upscaling method: " + upscale)
     print("Triple exposure: " + str(triple_exposure))
     if triple_exposure:
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
 
-    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale
 
 def get_last_iter(level, model_dir):
 
@@ -290,12 +305,10 @@ def get_last_iter(level, model_dir):
     else:
         return -1
 
-
 def log10(x):
   numerator = tf.log(x)
   denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
   return numerator / denominator
-
 
 def _tensor_size(tensor):
     from operator import mul
