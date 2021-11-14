@@ -13,7 +13,7 @@ from model import PyNET
 
 from load_dataset import extract_bayer_channels
 
-out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale = utils.process_test_model_args(sys.argv)
+out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure = utils.process_test_model_args(sys.argv)
 
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
@@ -33,6 +33,8 @@ TARGET_DEPTH = 3
 PATCH_DEPTH = 4
 if triple_exposure:
     PATCH_DEPTH *= 3
+elif up_exposure or down_exposure:
+    PATCH_DEPTH *= 2
 
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
@@ -91,6 +93,16 @@ with tf.compat.v1.Session(config=config) as sess:
             Iu = extract_bayer_channels(Iu)
 
             I = np.dstack((In, Io, Iu))
+        elif up_exposure:
+            Io = np.asarray(rawpy.imread((test_dir_over + photo)).raw_image.astype(np.float32))
+            Io = extract_bayer_channels(Io)
+
+            I = np.dstack((In, Io))
+        elif down_exposure:
+            Iu = np.asarray(rawpy.imread((test_dir_full + photo)).raw_image.astype(np.float32))
+            Iu = extract_bayer_channels(Iu)
+
+            I = np.dstack((In, Iu))
         else:
             I = In
 

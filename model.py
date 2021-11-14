@@ -46,8 +46,8 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
 
         conv_l4_d7 = _conv_multi_block(conv_l4_d6, 3, num_maps=256, instance_norm=instance_norm)
 
-        conv_t3a = _upscale(conv_l4_d7, 128, 3, 2, upscale)      # 28 -> 56
-        conv_t3b = _upscale(conv_l4_d7, 128, 3, 2, upscale)      # 28 -> 56
+        conv_t3a = _upscale(conv_l4_d7, 128, 3, 2, upscale)      # 16 -> 32
+        conv_t3b = _upscale(conv_l4_d7, 128, 3, 2, upscale)      # 16 -> 32
 
         # -> Output: Level 4
         conv_l4_out = _conv_layer(conv_l4_d7, 3, 3, 1, relu=False, instance_norm=False)
@@ -64,8 +64,8 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
 
         conv_l3_d8 = _conv_multi_block(conv_l3_d7, 3, num_maps=128, instance_norm=instance_norm)
 
-        conv_t2a = _upscale(conv_l3_d8, 64, 3, 2, upscale)       # 56 -> 112
-        conv_t2b = _upscale(conv_l3_d8, 64, 3, 2, upscale)       # 56 -> 112
+        conv_t2a = _upscale(conv_l3_d8, 64, 3, 2, upscale)       # 32 -> 64
+        conv_t2b = _upscale(conv_l3_d8, 64, 3, 2, upscale)       # 32 -> 64
 
         # -> Output: Level 3
         conv_l3_out = _conv_layer(conv_l3_d8, 3, 3, 1, relu=False, instance_norm=False)
@@ -84,8 +84,8 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
         conv_l2_d8 = stack(_conv_multi_block(conv_l2_d7, 5, num_maps=64, instance_norm=instance_norm), conv_t2b)
         conv_l2_d9 = _conv_multi_block(conv_l2_d8, 3, num_maps=64, instance_norm=instance_norm)
 
-        conv_t1a = _upscale(conv_l2_d9, 32, 3, 2, upscale)       # 112 -> 224
-        conv_t1b = _upscale(conv_l2_d9, 32, 3, 2, upscale)       # 112 -> 224
+        conv_t1a = _upscale(conv_l2_d9, 32, 3, 2, upscale)       # 64 -> 128
+        conv_t1b = _upscale(conv_l2_d9, 32, 3, 2, upscale)       # 64 -> 128
 
         # -> Output: Level 2
         conv_l2_out = _conv_layer(conv_l2_d9, 3, 3, 1, relu=False, instance_norm=False)
@@ -117,7 +117,7 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
         # ----------------------------------------------------------
         # Processing: Level 0 (x2 upscaling),  Input size: 224 x 224
 
-        conv_l0 = _upscale(conv_l1_d12, 8, 3, 2, upscale)        # 224 -> 448
+        conv_l0 = _upscale(conv_l1_d12, 8, 3, 2, upscale)        # 128 -> 256
         conv_l0_out = _conv_layer(conv_l0, 3, 3, 1, relu=False, instance_norm=False)
 
         output_l0 = tf.nn.tanh(conv_l0_out) * 0.58 + 0.5

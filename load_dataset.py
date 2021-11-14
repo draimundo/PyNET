@@ -23,18 +23,19 @@ def extract_bayer_channels(raw):
     return RAW_norm
 
 
-def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir):
+def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False):
 
     val_directory_dslr = dataset_dir + 'val/fujifilm/'
     val_directory_phone = dataset_dir + 'val/mediatek_raw/'
 
-    if triple_exposure:
-        val_directory_over = dataset_dir + 'val/' + over_dir
-        val_directory_under = dataset_dir + 'val/' + under_dir
+    val_directory_over = dataset_dir + 'val/' + over_dir
+    val_directory_under = dataset_dir + 'val/' + under_dir
 
     PATCH_DEPTH = 4
     if triple_exposure:
         PATCH_DEPTH *= 3
+    elif up_exposure or down_exposure:
+        PATCH_DEPTH *= 2
 
     # NUM_VAL_IMAGES = 1204
     NUM_VAL_IMAGES = len([name for name in os.listdir(val_directory_phone)
@@ -54,6 +55,14 @@ def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exp
             Iu = np.asarray(imageio.imread(val_directory_under + str(i) + '.png'))
             Iu = extract_bayer_channels(Iu)
             val_data[i, :] = np.dstack((In, Io, Iu))
+        elif down_exposure:
+            Iu = np.asarray(imageio.imread(val_directory_under + str(i) + '.png'))
+            Iu = extract_bayer_channels(Iu)
+            val_data[i, :] = np.dstack((In, Iu))
+        elif up_exposure:
+            Io = np.asarray(imageio.imread(val_directory_over + str(i) + '.png'))
+            Io = extract_bayer_channels(Io)
+            val_data[i, :] = np.dstack((In, Io))
         else:
             val_data[i, :] = In
 
@@ -64,18 +73,20 @@ def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exp
 
     return val_data, val_answ
 
-def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir):
+def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False):
 
     test_directory_dslr = dataset_dir + 'test/fujifilm/'
     test_directory_phone = dataset_dir + 'test/mediatek_raw/'
 
-    if triple_exposure:
-        test_directory_over = dataset_dir + 'test/' + over_dir
-        test_directory_under = dataset_dir + 'test/' + under_dir
+    test_directory_over = dataset_dir + 'test/' + over_dir
+    test_directory_under = dataset_dir + 'test/' + under_dir
 
     PATCH_DEPTH = 4
     if triple_exposure:
         PATCH_DEPTH *= 3
+    elif up_exposure or down_exposure:
+        PATCH_DEPTH *= 2
+        
 
     # NUM_VAL_IMAGES = 1204
     NUM_TEST_IMAGES = len([name for name in os.listdir(test_directory_phone)
@@ -95,6 +106,14 @@ def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_ex
             Iu = np.asarray(imageio.imread(test_directory_under + str(i) + '.png'))
             Iu = extract_bayer_channels(Iu)
             test_data[i, :] = np.dstack((In, Io, Iu))
+        elif down_exposure:
+            Iu = np.asarray(imageio.imread(test_directory_under + str(i) + '.png'))
+            Iu = extract_bayer_channels(Iu)
+            test_data[i, :] = np.dstack((In, Iu))
+        elif up_exposure:
+            Io = np.asarray(imageio.imread(test_directory_over + str(i) + '.png'))
+            Io = extract_bayer_channels(Io)
+            test_data[i, :] = np.dstack((In, Io))
         else:
             test_data[i, :] = In
 
@@ -105,18 +124,19 @@ def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_ex
 
     return test_data, test_answ
 
-def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir):
+def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False):
 
     train_directory_dslr = dataset_dir + 'train/fujifilm/'
     train_directory_phone = dataset_dir + 'train/mediatek_raw/'
 
-    if triple_exposure:
-        train_directory_over = dataset_dir + 'train/' + over_dir
-        train_directory_under = dataset_dir + 'train/' + under_dir
+    train_directory_over = dataset_dir + 'train/' + over_dir
+    train_directory_under = dataset_dir + 'train/' + under_dir
 
     PATCH_DEPTH = 4
     if triple_exposure:
         PATCH_DEPTH *= 3
+    elif up_exposure or down_exposure:
+        PATCH_DEPTH *= 2
 
     NUM_TRAINING_IMAGES = len([name for name in os.listdir(train_directory_phone)
                                if os.path.isfile(os.path.join(train_directory_phone, name))])
@@ -138,6 +158,14 @@ def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR
             Iu = np.asarray(imageio.imread(train_directory_under + str(img) + '.png'))
             Iu = extract_bayer_channels(Iu)
             train_data[i, :] = np.dstack((In, Io, Iu))
+        elif down_exposure:
+            Iu = np.asarray(imageio.imread(train_directory_under + str(img) + '.png'))
+            Iu = extract_bayer_channels(Iu)
+            train_data[i, :] = np.dstack((In, Iu))
+        elif up_exposure:
+            Io = np.asarray(imageio.imread(train_directory_over + str(img) + '.png'))
+            Io = extract_bayer_channels(Io)
+            train_data[i, :] = np.dstack((In, Io))
         else:
             train_data[i, :] = In
 

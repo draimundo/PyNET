@@ -18,7 +18,7 @@ import vgg
 # Processing command arguments
 
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
-dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color, upscale\
+dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color, upscale, up_exposure, down_exposure\
         = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -27,6 +27,8 @@ PATCH_WIDTH, PATCH_HEIGHT = 128, 128
 PATCH_DEPTH = 4
 if triple_exposure:
     PATCH_DEPTH *= 3
+elif up_exposure or down_exposure:
+    PATCH_DEPTH *= 2
 
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
@@ -130,11 +132,12 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Loading training and val data
     print("Loading val data...")
-    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)
+    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)
+
     print("Val data was loaded\n")
 
     print("Loading training data...")
-    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)
+    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)
     print("Training data was loaded\n")
 
     VAL_SIZE = val_data.shape[0]
@@ -231,4 +234,4 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if i % 1000 == 0  and i > 0:
             del train_data
             del train_answ
-            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)
+            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)

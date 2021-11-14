@@ -10,20 +10,22 @@ from model import PyNET
 import utils
 import vgg
 
-dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale = utils.process_evaluate_model_args(sys.argv)
+dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
 
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 PATCH_WIDTH, PATCH_HEIGHT = 128, 128
 PATCH_DEPTH = 4
 if triple_exposure:
     PATCH_DEPTH *= 3
+elif up_exposure or down_exposure:
+    PATCH_DEPTH *= 2
 TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
 TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE)
 TARGET_DEPTH = 3
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
 print("Loading testing data...")
-test_data, test_answ = load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir)
+test_data, test_answ = load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)
 print("Testing data was loaded\n")
 
 TEST_SIZE = test_data.shape[0]
