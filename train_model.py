@@ -136,7 +136,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir, exist_ok=True)
 
-    if level%2 == 1:
+    if restore_iter%2 == 1:
         print("Restoring Variables of same level")
         saver.restore(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(restore_iter-1) + ".ckpt")
     elif level < 5:
