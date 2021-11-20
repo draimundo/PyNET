@@ -31,9 +31,11 @@ def process_command_args(arguments):
 
     default_facs = True
     fac_mse = 0
-    fac_content = 0
+    fac_l1 = 0
     fac_ssim = 0
+    fac_ms_ssim = 0
     fac_color = 0
+    fac_vgg = 0
 
     over_dir = 'mediatek_raw_over/'
     under_dir = 'mediatek_raw_under/'
@@ -82,32 +84,33 @@ def process_command_args(arguments):
         if args.startswith("save_mid_imgs"):
             save_mid_imgs = eval(args.split("=")[1])
 
-        
-        if args.startswith("fac_content"):
-            fac_content = float(args.split("=")[1])
-            default_facs = False
         if args.startswith("fac_mse"):
             fac_mse = float(args.split("=")[1])
+            default_facs = False
+        if args.startswith("fac_l1"):
+            fac_l1 = float(args.split("=")[1])
             default_facs = False
         if args.startswith("fac_ssim"):
             fac_ssim = float(args.split("=")[1])
             default_facs = False
+        if args.startswith("fac_ms_ssim"):
+            fac_ms_ssim = float(args.split("=")[1])
+            default_facs = False
         if args.startswith("fac_color"):
             fac_color = float(args.split("=")[1])
+            default_facs = False
+        if args.startswith("fac_vgg"):
+            fac_vgg = float(args.split("=")[1])
             default_facs = False
 
         if args.startswith("triple_exposure"):
             triple_exposure = eval(args.split("=")[1])
-
         if args.startswith("up_exposure"):
             up_exposure = eval(args.split("=")[1])
-
         if args.startswith("down_exposure"):
             down_exposure = eval(args.split("=")[1])
-
         if args.startswith("over_dir"):
             over_dir = args.split("=")[1]
-
         if args.startswith("under_dir"):
             under_dir = args.split("=")[1]
 
@@ -153,11 +156,18 @@ def process_command_args(arguments):
     if triple_exposure:
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
-    print("Loss function=" + " content:" + str(fac_content) + " +MSE:" + str(fac_mse) + " +SSIM:" + str(fac_ssim) + " +color:" + str(fac_color))
+    print("Loss function=" +
+        " mse:" + str(fac_mse) +
+        " l1:" + str(fac_l1) +
+        " ssim:" + str(fac_ssim) +
+        " ms-ssim:" + str(fac_ms_ssim) +
+        " color:" + str(fac_color) +
+        " vgg:" + str(fac_vgg) )
 
-    return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters, triple_exposure, over_dir, under_dir,\
-            dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, fac_content, fac_mse, fac_ssim, fac_color, upscale, up_exposure, down_exposure
-
+    return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
+        triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
+        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale,\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg\
 
 def process_test_model_args(arguments):
     out_dir = 'single_exp/'
