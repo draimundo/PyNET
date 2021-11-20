@@ -244,7 +244,6 @@ def process_evaluate_model_args(arguments):
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
     batch_size = 10
     use_gpu = True
-    level = 5
     interval = 0
     use_gpu = True
     triple_exposure = False

@@ -83,7 +83,7 @@ with tf.compat.v1.Session(config=config) as sess:
         loss_text.append("loss_ssim")
 
     # MS-SSIM loss
-    if level < 5:
+    if level < 1:
         loss_ms_ssim = 1 - tf.reduce_mean(tf.image.ssim_multiscale(enhanced_gray, dslr_gray, 1.0))
         loss_list.append(loss_ms_ssim)
         loss_text.append("loss_ms_ssim")
