@@ -71,8 +71,8 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     loss_text = ["loss_mse"]
 
     # L1 loss
-    loss_l1 = tf.reduce_mean(tf.abs(tf.math.subtract(enhanced, dslr_)))
     if fac_l1 > 0:
+        loss_l1 = tf.reduce_mean(tf.abs(tf.math.subtract(enhanced, dslr_)))
         loss_list.append(loss_l1)
         loss_text.append("loss_l1")
         loss_generator += loss_l1 * fac_l1
@@ -83,24 +83,28 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     loss_text.append("metric_psnr")
 
     # SSIM loss
-    loss_ssim = 1 - tf.reduce_mean(tf.image.ssim(enhanced_gray, dslr_gray, 1.0))
-    if fac_ssim > 0:
-        loss_generator += loss_ssim * fac_ssim
+    if level > 4:
+        loss_ssim = 1 - tf.reduce_mean(tf.image.ssim(enhanced_gray, dslr_gray, 1.0))
         loss_list.append(loss_ssim)
         loss_text.append("loss_ssim")
+        if fac_ssim > 0:
+            loss_generator += loss_ssim * fac_ssim
+
 
     # MS-SSIM loss
-    loss_ms_ssim = 1 - tf.reduce_mean(tf.image.ssim_multiscale(enhanced_gray, dslr_gray, 1.0))
-    if fac_ms_ssim > 0:
-        loss_generator += loss_ms_ssim * fac_ms_ssim
+    if level > 4:
+        loss_ms_ssim = 1 - tf.reduce_mean(tf.image.ssim_multiscale(enhanced_gray, dslr_gray, 1.0))
         loss_list.append(loss_ms_ssim)
         loss_text.append("loss_ms_ssim")
+        if fac_ms_ssim > 0:
+            loss_generator += loss_ms_ssim * fac_ms_ssim
+        
 
     # Color loss
-    enhanced_blur = utils.blur(enhanced)
-    dslr_blur = utils.blur(dslr_)
-    loss_color = tf.reduce_mean(tf.math.squared_difference(dslr_blur, enhanced_blur))
     if fac_color > 0:
+        enhanced_blur = utils.blur(enhanced)
+        dslr_blur = utils.blur(dslr_)
+        loss_color = tf.reduce_mean(tf.math.squared_difference(dslr_blur, enhanced_blur))
         loss_generator += loss_color * fac_color
         loss_list.append(loss_color)
         loss_text.append("loss_color")
