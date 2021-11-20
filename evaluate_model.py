@@ -57,7 +57,7 @@ with tf.compat.v1.Session(config=config) as sess:
     saver = tf.compat.v1.train.Saver()
 
     dslr_gray = tf.image.rgb_to_grayscale(dslr_)
-    enhanced_gray = tf.image.rgb_to_grayscale(dslr_)
+    enhanced_gray = tf.image.rgb_to_grayscale(enhanced)
 
     ## PSNR loss
     loss_psnr = tf.reduce_mean(tf.image.psnr(enhanced, dslr_, 1.0))

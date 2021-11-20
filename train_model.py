@@ -62,7 +62,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Losses
     dslr_gray = tf.image.rgb_to_grayscale(dslr_)
-    enhanced_gray = tf.image.rgb_to_grayscale(dslr_)
+    enhanced_gray = tf.image.rgb_to_grayscale(enhanced)
 
     # MSE loss
     loss_mse = tf.reduce_mean(tf.math.squared_difference(enhanced, dslr_))
