@@ -56,10 +56,18 @@ with tf.compat.v1.Session(config=config) as sess:
 
     saver = tf.compat.v1.train.Saver()
 
+    dslr_gray = tf.image.rgb_to_grayscale(dslr_)
+    enhanced_gray = tf.image.rgb_to_grayscale(dslr_)
+
     ## PSNR loss
     loss_psnr = tf.reduce_mean(tf.image.psnr(enhanced, dslr_, 1.0))
     loss_list = [loss_psnr]
     loss_text = ["loss_psnr"]
+
+    ## L1 loss
+    loss_l1 = tf.reduce_mean(tf.abs(tf.math.subtract(enhanced, dslr_)))
+    loss_list.append(loss_l1)
+    loss_text.append("loss_l1")
 
     ## Color loss
     # enhanced_blur = utils.blur(enhanced)
@@ -70,9 +78,15 @@ with tf.compat.v1.Session(config=config) as sess:
 
     ## SSIM loss
     if level < 5:
-        loss_ssim = tf.reduce_mean(tf.image.ssim(enhanced, dslr_, 1.0))
+        loss_ssim = 1 - tf.reduce_mean(tf.image.ssim(enhanced_gray, dslr_gray, 1.0))
         loss_list.append(loss_ssim)
         loss_text.append("loss_ssim")
+
+    # MS-SSIM loss
+    if level < 5:
+        loss_ms_ssim = 1 - tf.reduce_mean(tf.image.ssim_multiscale(enhanced_gray, dslr_gray, 1.0))
+        loss_list.append(loss_ms_ssim)
+        loss_text.append("loss_ms_ssim")
 
     ## Content loss
     CONTENT_LAYER = 'relu5_4'
