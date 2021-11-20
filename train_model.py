@@ -83,7 +83,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     loss_text.append("metric_psnr")
 
     # SSIM loss
-    if level > 4:
+    if level < 5:
         loss_ssim = 1 - tf.reduce_mean(tf.image.ssim(enhanced_gray, dslr_gray, 1.0))
         loss_list.append(loss_ssim)
         loss_text.append("loss_ssim")
@@ -92,7 +92,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
 
     # MS-SSIM loss
-    if level > 4:
+    if level < 5:
         loss_ms_ssim = 1 - tf.reduce_mean(tf.image.ssim_multiscale(enhanced_gray, dslr_gray, 1.0))
         loss_list.append(loss_ms_ssim)
         loss_text.append("loss_ms_ssim")
