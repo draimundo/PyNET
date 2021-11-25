@@ -10,6 +10,8 @@ from model import PyNET
 import utils
 import vgg
 
+import niqe 
+
 dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
 
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
@@ -96,14 +98,18 @@ with tf.compat.v1.Session(config=config) as sess:
     loss_list.append(loss_content)
     loss_text.append("loss_content")
 
+    ## NIQE evaluator
+    niqe = niqe.create_evaluator()
+
     logs = open(model_dir + "test_" + "level" + str(level) + ".txt", "w+")
     logs.close()
 
-    for restore_iter in tqdm(restore_iters):
+    control_niqe = 0.0
+    for i, restore_iter in enumerate(restore_iters):
         test_losses_gen = np.zeros((1, len(loss_text)))
         saver.restore(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(restore_iter) + ".ckpt")
-
-        for j in range(num_test_batches):
+        metric_niqe = 0.0
+        for j in tqdm(range(num_test_batches)):
 
             be = j * batch_size
             en = (j+1) * batch_size
@@ -111,12 +117,17 @@ with tf.compat.v1.Session(config=config) as sess:
             phone_images = test_data[be:en]
             dslr_images = test_answ[be:en]
 
-            losses = sess.run(loss_list, feed_dict={phone_: phone_images, dslr_: dslr_images})
+            [losses, enhanced_images] = sess.run([loss_list, enhanced], feed_dict={phone_: phone_images, dslr_: dslr_images})
             test_losses_gen += np.asarray(losses) / num_test_batches
+
+            metric_niqe += niqe.evaluate(enhanced_images, enhanced_images) / num_test_batches
+            if i == 0:
+                control_niqe += niqe.evaluate(dslr_images, dslr_images) / num_test_batches
 
         logs_gen = "Losses - iter: " + str(restore_iter) + "-> "
         for idx, loss in enumerate(loss_text):
             logs_gen += "%s: %.4g; " % (loss, test_losses_gen[0][idx])
+        logs_gen += "niqe: %.6g; control-niqe: %.6g" % (metric_niqe, control_niqe)
         logs_gen += '\n'
         print(logs_gen)
 
