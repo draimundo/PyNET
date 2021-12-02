@@ -36,6 +36,7 @@ def process_command_args(arguments):
     fac_ms_ssim = 0
     fac_color = 0
     fac_vgg = 0
+    fac_texture = 0
 
     over_dir = 'mediatek_raw_over/'
     under_dir = 'mediatek_raw_under/'
@@ -102,6 +103,9 @@ def process_command_args(arguments):
         if args.startswith("fac_vgg"):
             fac_vgg = float(args.split("=")[1])
             default_facs = False
+        if args.startswith("fac_texture"):
+            fac_texture = float(args.split("=")[1])
+            default_facs = False
 
         if args.startswith("triple_exposure"):
             triple_exposure = eval(args.split("=")[1])
@@ -162,17 +166,18 @@ def process_command_args(arguments):
         " ssim:" + str(fac_ssim) +
         " ms-ssim:" + str(fac_ms_ssim) +
         " color:" + str(fac_color) +
-        " vgg:" + str(fac_vgg) )
+        " vgg:" + str(fac_vgg) +
+        "texture:" + str(fac_texture) )
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
         triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
         dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale,\
-        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture\
 
 def process_test_model_args(arguments):
     out_dir = 'single_exp/'
     model_dir = 'models/single_exp/'
-    interval = 0
+    restore_iter = 0
     use_gpu = True
     triple_exposure = False
     up_exposure = False
@@ -189,14 +194,8 @@ def process_test_model_args(arguments):
         if args.startswith("model_dir"):
             model_dir = args.split("=")[1]
 
-        if args.startswith("start_iter"):
-            start_iter = int(args.split("=")[1])
-
-        if args.startswith("stop_iter"):
-            stop_iter = int(args.split("=")[1])
-
-        if args.startswith("interval"):
-            interval = int(args.split("=")[1])
+        if args.startswith("restore_iter"):
+            restore_iter = int(args.split("=")[1])
 
         if args.startswith("use_gpu"):
             use_gpu = args.split("=")[1]
@@ -216,13 +215,12 @@ def process_test_model_args(arguments):
         if args.startswith("upscale"):
             upscale = args.split("=")[1]
 
-    if interval == 0:
-        restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
+    if restore_iter == 0:
+        restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
                     if model_file.startswith("pynet_level_" + str(level))])))
     else:
-        restore_iters = range(start_iter,stop_iter,interval)
-    restore_iters = reversed(restore_iters)
+        restore_iter = [restore_iter]
 
     print("The following parameters will be applied for CNN testing:")
     print("Training level: " + str(level))
@@ -232,7 +230,7 @@ def process_test_model_args(arguments):
     print("Down exposure: " + str(down_exposure))
     print("Triple exposure: " + str(triple_exposure))
 
-    return out_dir, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure
+    return out_dir, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure
 
 def process_evaluate_model_args(arguments):
     dataset_dir = 'raw_images/'
@@ -244,7 +242,7 @@ def process_evaluate_model_args(arguments):
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
     batch_size = 10
     use_gpu = True
-    interval = 0
+    restore_iter = 0
     use_gpu = True
     triple_exposure = False
     up_exposure = False
@@ -279,17 +277,8 @@ def process_evaluate_model_args(arguments):
         if args.startswith("model_dir"):
             model_dir = args.split("=")[1]
 
-        if args.startswith("start_iter"):
-            start_iter = int(args.split("=")[1])
-
-        if args.startswith("stop_iter"):
-            stop_iter = int(args.split("=")[1])
-
-        if args.startswith("interval"):
-            interval = int(args.split("=")[1])
-
-        if args.startswith("interval"):
-            interval = int(args.split("=")[1])
+        if args.startswith("restore_iter"):
+            restore_iter = int(args.split("=")[1])
 
         if args.startswith("use_gpu"):
             use_gpu = args.split("=")[1]
@@ -309,13 +298,12 @@ def process_evaluate_model_args(arguments):
         if args.startswith("upscale"):
             upscale = args.split("=")[1]
 
-    if interval == 0:
-        restore_iters = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
+    if restore_iter == 0:
+        restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
                     if model_file.startswith("pynet_level_" + str(level))])))
     else:
-        restore_iters = range(start_iter,stop_iter,interval)
-    restore_iters = reversed(restore_iters)
+        restore_iter = [restore_iter]
 
     print("The following parameters will be applied for CNN evaluation:")
     print("Training level: " + str(level))
@@ -331,7 +319,7 @@ def process_evaluate_model_args(arguments):
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
 
-    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure
 
 def get_last_iter(level, model_dir):
 

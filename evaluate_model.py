@@ -10,7 +10,8 @@ from model import PyNET
 import utils
 import vgg
 
-import niqe 
+import niqe
+import lpips_tf
 
 dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
 
@@ -98,6 +99,11 @@ with tf.compat.v1.Session(config=config) as sess:
     loss_list.append(loss_content)
     loss_text.append("loss_content")
 
+    ## LPIPS
+    loss_lpips = tf.reduce_mean(lpips_tf.lpips(enhanced, dslr_, net='vgg'))
+    loss_list.append(loss_lpips)
+    loss_text.append("loss_lpips")
+
     ## NIQE evaluator
     niqe = niqe.create_evaluator()
 
@@ -120,14 +126,14 @@ with tf.compat.v1.Session(config=config) as sess:
             [losses, enhanced_images] = sess.run([loss_list, enhanced], feed_dict={phone_: phone_images, dslr_: dslr_images})
             test_losses_gen += np.asarray(losses) / num_test_batches
 
-            metric_niqe += niqe.evaluate(enhanced_images, enhanced_images) / num_test_batches
-            if i == 0:
-                control_niqe += niqe.evaluate(dslr_images, dslr_images) / num_test_batches
+            # metric_niqe += niqe.evaluate(enhanced_images, enhanced_images) / num_test_batches
+            # if i == 0:
+            #     control_niqe += niqe.evaluate(dslr_images, dslr_images) / num_test_batches
 
         logs_gen = "Losses - iter: " + str(restore_iter) + "-> "
         for idx, loss in enumerate(loss_text):
             logs_gen += "%s: %.4g; " % (loss, test_losses_gen[0][idx])
-        logs_gen += "niqe: %.6g; control-niqe: %.6g" % (metric_niqe, control_niqe)
+        # logs_gen += "niqe: %.6g; control-niqe: %.6g" % (metric_niqe, control_niqe)
         logs_gen += '\n'
         print(logs_gen)
 

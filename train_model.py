@@ -8,9 +8,10 @@ import os
 
 from tqdm import tqdm
 from load_dataset import load_training_batch, load_val_data
-from model import PyNET
+from model import PyNET, texture_d
 import utils
 import vgg
+import lpips_tf
 
 # Processing command arguments
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
@@ -119,6 +120,28 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     if fac_vgg > 0:
         loss_generator += loss_vgg * fac_vgg
 
+    ## Adversarial loss - discrim
+    if fac_texture > 0:
+        adv_real = dslr_gray
+        adv_fake = enhanced_gray
+
+        pred_real = texture_d(adv_real, activation=False)
+        pred_fake = texture_d(adv_fake, activation=False)
+
+        loss_texture_g = -tf.reduce_mean(tf.math.log(tf.clip_by_value(tf.nn.sigmoid(pred_fake - pred_real), 1e-10, 1.0)))
+        loss_texture_d = -tf.reduce_mean(tf.math.log(tf.clip_by_value(tf.nn.sigmoid(pred_real - pred_fake), 1e-10, 1.0)))
+
+        loss_generator += loss_texture_g * fac_texture
+        loss_list.append(loss_texture_g)
+        loss_text.append("loss_texture")
+
+    ## LPIPS
+    loss_lpips = tf.reduce_mean(lpips_tf.lpips(enhanced, dslr_, net='alex'))
+    loss_list.append(loss_lpips)
+    loss_text.append("loss_lpips")
+    if fac_lpips > 0:
+        loss_generator += loss_lpips * fac_lpips
+
     # Final loss function
     loss_list.insert(0, loss_generator)
     loss_text.insert(0, "loss_generator")
@@ -126,6 +149,10 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     # Optimize network parameters
     generator_vars = [v for v in tf.compat.v1.global_variables() if v.name.startswith("generator")]
     train_step_gen = tf.compat.v1.train.AdamOptimizer(learning_rate).minimize(loss_generator, var_list=generator_vars)
+
+    if fac_texture > 0:
+        vars_texture_d = [v for v in tf.compat.v1.global_variables() if v.name.startswith("texture_d")]
+        train_step_texture_d = tf.compat.v1.train.AdamOptimizer(learning_rate/1000.0).minimize(loss_texture_d, var_list=vars_texture_d)
 
     # Initialize and restore the variables
     print("Initializing variables")
@@ -166,8 +193,26 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     logs.close()
 
     training_loss = 0.0
+    if fac_texture > 0:
+        n_texture_d_ = 0.0
+    
+    maxPSNR = 0.0
+    minLPIPS = 0.0
 
     for i in tqdm(range(iter_start, num_train_iters + 1)):
+        # Train texture discriminator
+        if fac_texture > 0:
+            idx_texture_d = np.random.randint(0, train_size, batch_size)
+            phone_texture_d = train_data[idx_texture_d]
+            dslr_texture_d = train_answ[idx_texture_d]
+
+            feed_texture_d = {phone_: phone_texture_d, dslr_: dslr_texture_d}
+            [loss_g, loss_d] = sess.run([loss_texture_g, loss_texture_d], feed_dict=feed_texture_d)
+
+            if loss_g < 3*loss_d:
+                [loss_temp, temp] = sess.run([loss_texture_d, train_step_texture_d], feed_dict=feed_texture_d)
+                n_texture_d_ += 1
+
 
         # Train PyNET model
         idx_train = np.random.randint(0, train_size, batch_size)
@@ -194,6 +239,9 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if i % eval_step == 0:
             val_losses_gen = np.zeros((1, len(loss_text)))
 
+            if fac_texture > 0:
+                val_loss_texture_d = 0.0
+
             for j in range(num_val_batches):
                 be = j * batch_size
                 en = (j+1) * batch_size
@@ -206,9 +254,18 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
                 val_losses_gen += np.asarray(losses) / num_val_batches
 
+                if fac_texture > 0:
+                    loss_temp = sess.run(loss_texture_d, feed_dict=valdict)
+                    val_loss_texture_d += loss_temp / num_val_batches
+
             logs_gen = "step %d | training: %.4g,  "  % (i, training_loss)
             for idx, loss in enumerate(loss_text):
                 logs_gen += "%s: %.4g; " % (loss, val_losses_gen[0][idx])
+            if fac_texture > 0:
+                logs_gen += " | texture_d loss: %.4g; n_texture_d: %.4g" % (val_loss_texture_d, n_texture_d_)
+            if maxPSNR < val_losses_gen[0][loss_text.index("metric_psnr")]:
+                maxPSNR = val_losses_gen[0][loss_text.index("metric_psnr")]
+                logs_gen += "\n max PSNR!"
 
             print(logs_gen)
 
@@ -232,6 +289,8 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
                     idx += 1
 
             training_loss = 0.0
+            if fac_texture > 0:
+                n_texture_d_ = 0.0
 
             # Saving the model that corresponds to the current iteration
             saver.save(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(i) + ".ckpt", write_meta_graph=False)
