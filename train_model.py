@@ -17,7 +17,7 @@ import lpips_tf
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
 triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
 dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale,\
-fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg\
+fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips\
     = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -249,10 +249,12 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
                 phone_images = val_data[be:en]
                 dslr_images = val_answ[be:en]
 
-                losses = sess.run([loss_list], \
-                    feed_dict={phone_: phone_images, dslr_: dslr_images})
+                valdict = {phone_: phone_images, dslr_: dslr_images}
+                toRun = [loss_list]
+                
+                loss_temp = sess.run(toRun, feed_dict=valdict)
 
-                val_losses_gen += np.asarray(losses) / num_val_batches
+                val_losses_gen += np.asarray(loss_temp) / num_val_batches
 
                 if fac_texture > 0:
                     loss_temp = sess.run(loss_texture_d, feed_dict=valdict)

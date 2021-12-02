@@ -37,6 +37,7 @@ def process_command_args(arguments):
     fac_color = 0
     fac_vgg = 0
     fac_texture = 0
+    fac_lpips = 0
 
     over_dir = 'mediatek_raw_over/'
     under_dir = 'mediatek_raw_under/'
@@ -106,6 +107,9 @@ def process_command_args(arguments):
         if args.startswith("fac_texture"):
             fac_texture = float(args.split("=")[1])
             default_facs = False
+        if args.startswith("fac_lpips"):
+            fac_lpips = float(args.split("=")[1])
+            default_facs = False
 
         if args.startswith("triple_exposure"):
             triple_exposure = eval(args.split("=")[1])
@@ -137,11 +141,11 @@ def process_command_args(arguments):
     if default_facs:
         fac_mse = 100
         if level == 3 or level == 2:
-            fac_content = 1
+            fac_vgg = 1
         if level == 1:
-            fac_mse, fac_content = 50, 1
+            fac_mse, fac_vgg = 50, 1
         if level == 0:
-            fac_mse, fac_content, fac_ssim = 20, 1, 20
+            fac_mse, fac_vgg, fac_ssim = 20, 1, 20
 
     print("The following parameters will be applied for CNN training:")
     print("Training level: " + str(level))
@@ -167,12 +171,13 @@ def process_command_args(arguments):
         " ms-ssim:" + str(fac_ms_ssim) +
         " color:" + str(fac_color) +
         " vgg:" + str(fac_vgg) +
-        "texture:" + str(fac_texture) )
+        " texture:" + str(fac_texture) +
+        " lpips:" + str(fac_lpips) )
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
         triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
         dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale,\
-        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips\
 
 def process_test_model_args(arguments):
     out_dir = 'single_exp/'
