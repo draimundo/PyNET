@@ -187,11 +187,12 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         loss_text.append("loss_unet")
 
     ## LPIPS
-    loss_lpips = tf.reduce_mean(lpips_tf.lpips(enhanced, dslr_, net='alex'))
-    loss_list.append(loss_lpips)
-    loss_text.append("loss_lpips")
-    if fac_lpips > 0:
-        loss_generator += loss_lpips * fac_lpips
+    if level < 1:
+        loss_lpips = tf.reduce_mean(lpips_tf.lpips(enhanced, dslr_, net='alex'))
+        loss_list.append(loss_lpips)
+        loss_text.append("loss_lpips")
+        if fac_lpips > 0:
+            loss_generator += loss_lpips * fac_lpips
 
     # Final loss function
     loss_list.insert(0, loss_generator)
