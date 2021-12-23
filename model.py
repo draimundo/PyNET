@@ -228,20 +228,22 @@ def _resblock_up(input, num_filters, use_bias=True, sn=False):
     return x + input
 
 def _self_attention(x, num_filters, sn=False):
+    batch_size, height, width, num_channels = x.get_shape().as_list()
     f = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
     g = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
-    h = _conv_layer(x, num_filters=num_filters, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+    h = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
 
     s = tf.matmul(_hw_flatten(g), _hw_flatten(f), transpose_b=True)
     beta = tf.nn.softmax(s)
 
     o = tf.matmul(beta, _hw_flatten(h))
+    o = _conv_layer(o, num_filters=num_channels, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
     gamma = tf.Variable(tf.zeros([1]))
 
     o = tf.reshape(o, shape=x.shape)  # [bs, h, w, C]
-    x = gamma * o + x
+    y = gamma * o + x
 
-    return x
+    return y
 
 def _self_attention_v2(x, num_filters, sn=False):
     f = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
