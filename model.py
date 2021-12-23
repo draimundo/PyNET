@@ -4,23 +4,24 @@ import tensorflow as tf
 import numpy as np
 
 
-def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="transpose"):
-    with tf.compat.v1.variable_scope("generator"):
+def pynet_g(input, instance_norm=True, instance_norm_level_1=False, upscale="transpose", downscale="maxpool", self_att=False):
+    with tf.compat.v1.variable_scope("pynet_g"):
         
-
         # -----------------------------------------
         # Downsampling layers
         conv_l1_d1 = _conv_multi_block(input, 3, num_maps=32, instance_norm=False)              # 128 -> 128
-        pool1 = max_pool(conv_l1_d1, 2)                                                         # 128 -> 64
+        pool1 = _downscale(conv_l1_d1, 64, 3, 2, downscale)                                     # 128 -> 64
+        if self_att:
+            pool1 = _stack(pool1, _self_attention(pool1, 64, sn=True))
 
         conv_l2_d1 = _conv_multi_block(pool1, 3, num_maps=64, instance_norm=instance_norm)      # 64 -> 64
-        pool2 = max_pool(conv_l2_d1, 2)                                                         # 64 -> 32
+        pool2 = _downscale(conv_l2_d1, 128, 3, 2, downscale)                                    # 64 -> 32
 
         conv_l3_d1 = _conv_multi_block(pool2, 3, num_maps=128, instance_norm=instance_norm)     # 32 -> 32
-        pool3 = max_pool(conv_l3_d1, 2)                                                         # 32 -> 16
+        pool3 = _downscale(conv_l3_d1, 256, 3, 2, downscale)                                      # 32 -> 16
 
         conv_l4_d1 = _conv_multi_block(pool3, 3, num_maps=256, instance_norm=instance_norm)     # 16 -> 16
-        pool4 = max_pool(conv_l4_d1, 2)                                                         # 16 -> 8
+        pool4 = _downscale(conv_l4_d1, 256, 3, 2, downscale)                                    # 16 -> 8
 
         # -----------------------------------------
         # Processing: Level 5,  Input size: 8 x 8
@@ -38,11 +39,11 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
 
         # -----------------------------------------
         # Processing: Level 4,  Input size: 28 x 28
-        conv_l4_d2 = stack(conv_l4_d1, conv_t4a)
+        conv_l4_d2 = _stack(conv_l4_d1, conv_t4a)
         conv_l4_d3 = _conv_multi_block(conv_l4_d2, 3, num_maps=256, instance_norm=instance_norm)
         conv_l4_d4 = _conv_multi_block(conv_l4_d3, 3, num_maps=256, instance_norm=instance_norm) + conv_l4_d3
         conv_l4_d5 = _conv_multi_block(conv_l4_d4, 3, num_maps=256, instance_norm=instance_norm) + conv_l4_d4
-        conv_l4_d6 = stack(_conv_multi_block(conv_l4_d5, 3, num_maps=256, instance_norm=instance_norm), conv_t4b)
+        conv_l4_d6 = _stack(_conv_multi_block(conv_l4_d5, 3, num_maps=256, instance_norm=instance_norm), conv_t4b)
 
         conv_l4_d7 = _conv_multi_block(conv_l4_d6, 3, num_maps=256, instance_norm=instance_norm)
 
@@ -55,12 +56,12 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
 
         # -----------------------------------------
         # Processing: Level 3,  Input size: 56 x 56
-        conv_l3_d2 = stack(conv_l3_d1, conv_t3a)
+        conv_l3_d2 = _stack(conv_l3_d1, conv_t3a)
         conv_l3_d3 = _conv_multi_block(conv_l3_d2, 5, num_maps=128, instance_norm=instance_norm) + conv_l3_d2
         conv_l3_d4 = _conv_multi_block(conv_l3_d3, 5, num_maps=128, instance_norm=instance_norm) + conv_l3_d3
         conv_l3_d5 = _conv_multi_block(conv_l3_d4, 5, num_maps=128, instance_norm=instance_norm) + conv_l3_d4
-        conv_l3_d6 = stack(_conv_multi_block(conv_l3_d5, 5, num_maps=128, instance_norm=instance_norm), conv_l3_d1)
-        conv_l3_d7 = stack(conv_l3_d6, conv_t3b)
+        conv_l3_d6 = _stack(_conv_multi_block(conv_l3_d5, 5, num_maps=128, instance_norm=instance_norm), conv_l3_d1)
+        conv_l3_d7 = _stack(conv_l3_d6, conv_t3b)
 
         conv_l3_d8 = _conv_multi_block(conv_l3_d7, 3, num_maps=128, instance_norm=instance_norm)
 
@@ -73,15 +74,15 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
 
         # -------------------------------------------
         # Processing: Level 2,  Input size: 112 x 112
-        conv_l2_d2 = stack(conv_l2_d1, conv_t2a)
-        conv_l2_d3 = stack(_conv_multi_block(conv_l2_d2, 5, num_maps=64, instance_norm=instance_norm), conv_l2_d1)
+        conv_l2_d2 = _stack(conv_l2_d1, conv_t2a)
+        conv_l2_d3 = _stack(_conv_multi_block(conv_l2_d2, 5, num_maps=64, instance_norm=instance_norm), conv_l2_d1)
 
         conv_l2_d4 = _conv_multi_block(conv_l2_d3, 7, num_maps=64, instance_norm=instance_norm) + conv_l2_d3
         conv_l2_d5 = _conv_multi_block(conv_l2_d4, 7, num_maps=64, instance_norm=instance_norm) + conv_l2_d4
         conv_l2_d6 = _conv_multi_block(conv_l2_d5, 7, num_maps=64, instance_norm=instance_norm) + conv_l2_d5
-        conv_l2_d7 = stack(_conv_multi_block(conv_l2_d6, 7, num_maps=64, instance_norm=instance_norm), conv_l2_d1)
+        conv_l2_d7 = _stack(_conv_multi_block(conv_l2_d6, 7, num_maps=64, instance_norm=instance_norm), conv_l2_d1)
 
-        conv_l2_d8 = stack(_conv_multi_block(conv_l2_d7, 5, num_maps=64, instance_norm=instance_norm), conv_t2b)
+        conv_l2_d8 = _stack(_conv_multi_block(conv_l2_d7, 5, num_maps=64, instance_norm=instance_norm), conv_t2b)
         conv_l2_d9 = _conv_multi_block(conv_l2_d8, 3, num_maps=64, instance_norm=instance_norm)
 
         conv_t1a = _upscale(conv_l2_d9, 32, 3, 2, upscale)       # 64 -> 128
@@ -93,8 +94,8 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
 
         # -------------------------------------------
         # Processing: Level 1,  Input size: 224 x 224
-        conv_l1_d2 = stack(conv_l1_d1, conv_t1a)
-        conv_l1_d3 = stack(_conv_multi_block(conv_l1_d2, 5, num_maps=32, instance_norm=False), conv_l1_d1)
+        conv_l1_d2 = _stack(conv_l1_d1, conv_t1a)
+        conv_l1_d3 = _stack(_conv_multi_block(conv_l1_d2, 5, num_maps=32, instance_norm=False), conv_l1_d1)
 
         conv_l1_d4 = _conv_multi_block(conv_l1_d3, 7, num_maps=32, instance_norm=False)
 
@@ -103,10 +104,10 @@ def PyNET(input, instance_norm=True, instance_norm_level_1=False, upscale="trans
         conv_l1_d7 = _conv_multi_block(conv_l1_d6, 9, num_maps=32, instance_norm=instance_norm_level_1) + conv_l1_d6
         conv_l1_d8 = _conv_multi_block(conv_l1_d7, 9, num_maps=32, instance_norm=instance_norm_level_1) + conv_l1_d7
 
-        conv_l1_d9 = stack(_conv_multi_block(conv_l1_d8, 7, num_maps=32, instance_norm=False), conv_l1_d1)
+        conv_l1_d9 = _stack(_conv_multi_block(conv_l1_d8, 7, num_maps=32, instance_norm=False), conv_l1_d1)
 
-        conv_l1_d10 = stack(_conv_multi_block(conv_l1_d9, 5, num_maps=32, instance_norm=False), conv_t1b)
-        conv_l1_d11 = stack(conv_l1_d10, conv_l1_d1)
+        conv_l1_d10 = _stack(_conv_multi_block(conv_l1_d9, 5, num_maps=32, instance_norm=False), conv_t1b)
+        conv_l1_d11 = _stack(conv_l1_d10, conv_l1_d1)
 
         conv_l1_d12 = _conv_multi_block(conv_l1_d11, 3, num_maps=32, instance_norm=False)
 
@@ -130,16 +131,29 @@ def _upscale(net, num_filters, filter_size, factor, method):
     if method == "transpose":
         return _conv_tranpose_layer(net, num_filters, filter_size, factor)
     elif method == "shuffle":
-        return _conv_pixel_shuffle(net, num_filters, filter_size, factor)
+        return _conv_pixel_shuffle_up(net, num_filters, filter_size, factor)
     elif method == "dcl":
         return _pixel_dcl(net, num_filters, filter_size)
+    elif method == "resnet":
+        return _resblock_up(net, num_filters, sn=True)
+    elif method == "nn":
+        return _nearest_neighbor(net, factor)
     else:
         print("Unrecognized upscaling method")
 
-
+def _downscale(net, num_filters, filter_size, factor, method):
+    if method == "maxpool":
+        return _max_pool(net, factor)
+    elif method == "shuffle":
+        return tf.nn.space_to_depth(net, factor)
+    elif method == "stride":
+        return _conv_layer(net, num_filters, filter_size, factor)
+    elif method == "resnet":
+        return _resblock_down(net, num_filters, sn=True)
+    else:
+        print("Unrecognized downscaling method")
 
 def texture_d(image_, activation=True):
-
     with tf.compat.v1.variable_scope("texture_d"):
 
         conv1 = _conv_layer(image_, 48, 11, 4, instance_norm = False)
@@ -158,6 +172,100 @@ def texture_d(image_, activation=True):
     
     return adv_out
 
+def unet_d(input, activation=True):
+    with tf.compat.v1.variable_scope("unet_d"):
+        ch = 64
+        sn = True
+
+        x = _resblock_down(input, ch, use_bias = False, sn=sn) #128
+        ch = ch*2
+
+        x = _resblock_down(x, ch, use_bias = False, sn=sn) #64
+
+        x = _self_attention(x, ch, sn)
+        ch = ch*2
+
+        x = _resblock_down(x, ch, use_bias = False, sn=sn) #32
+        ch = ch*2
+
+        x = _resblock_down(x, ch, use_bias = False, sn=sn) #16
+        x = _resblock_down(x, ch, use_bias = False, sn=sn) #8
+
+        x = tf.compat.v1.nn.leaky_relu(x)
+        x = _global_sum_pool(x)
+
+        flat = tf.compat.v1.layers.flatten(x)
+        out = _fully_connected_layer(flat, 2, relu=False)
+
+        if activation:
+            out = tf.nn.softmax(out)
+    return out
+
+def _resblock_down(input, num_filters, use_bias=True, sn=False):
+    x = _instance_norm(input)
+    x = tf.compat.v1.nn.leaky_relu(x)
+    x = _conv_layer(x, num_filters, 3, 2, relu=False, use_bias=use_bias, sn=sn)
+
+    x = _instance_norm(x)
+    x = tf.compat.v1.nn.leaky_relu(x)
+    x = _conv_layer(x, num_filters, 3, 1, relu=False, use_bias=use_bias, sn=sn)
+
+    input = _conv_layer(input, num_filters, 3, 2, relu=False, use_bias=use_bias, sn=sn)
+
+    return x + input
+
+def _resblock_up(input, num_filters, use_bias=True, sn=False):
+    x = _instance_norm(input)
+    x = tf.compat.v1.nn.leaky_relu(x)
+    x = _conv_tranpose_layer(x, num_filters, 3, 2, relu = False, use_bias = use_bias, sn=sn)
+
+    x = _instance_norm(x)
+    x = tf.compat.v1.nn.leaky_relu(x)
+    x = _conv_tranpose_layer(x, num_filters, 3, 1, relu = False, use_bias = use_bias, sn=sn)
+
+    input = _conv_tranpose_layer(input, num_filters, 3, 2, relu = False, use_bias = use_bias, sn=sn)
+
+    return x + input
+
+def _self_attention(x, num_filters, sn=False):
+    f = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+    g = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+    h = _conv_layer(x, num_filters=num_filters, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+
+    s = tf.matmul(_hw_flatten(g), _hw_flatten(f), transpose_b=True)
+    beta = tf.nn.softmax(s)
+
+    o = tf.matmul(beta, _hw_flatten(h))
+    gamma = tf.Variable(tf.zeros([1]))
+
+    o = tf.reshape(o, shape=x.shape)  # [bs, h, w, C]
+    x = gamma * o + x
+
+    return x
+
+def _self_attention_v2(x, num_filters, sn=False):
+    f = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+    f = _max_pool(f, 2)
+
+    g = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+
+    h = _conv_layer(x, num_filters=num_filters, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+    h = _max_pool(g, 2)
+
+    s = tf.matmul(_hw_flatten(g), _hw_flatten(f), transpose_b=True)
+    beta = tf.nn.softmax(s)
+
+    o = tf.matmul(beta, _hw_flatten(h))
+    gamma = tf.Variable(tf.zeros([1]))
+
+    o = tf.reshape(o, shape=x.shape)  # [bs, h, w, C]
+    o = _conv_layer(o, num_filters, 1, 1, relu=False, sn=sn)
+    x = gamma * o + x
+
+    return x
+
+def _hw_flatten(x) :
+    return tf.reshape(x, shape=[x.shape[0], -1, x.shape[-1]])
 
 def _conv_multi_block(input, max_size, num_maps, instance_norm):
 
@@ -171,38 +279,25 @@ def _conv_multi_block(input, max_size, num_maps, instance_norm):
         conv_5a = _conv_layer(input, num_maps, 5, 1, relu=True, instance_norm=instance_norm)
         conv_5b = _conv_layer(conv_5a, num_maps, 5, 1, relu=True, instance_norm=instance_norm)
 
-        output_tensor = stack(output_tensor, conv_5b)
+        output_tensor = _stack(output_tensor, conv_5b)
 
     if max_size >= 7:
 
         conv_7a = _conv_layer(input, num_maps, 7, 1, relu=True, instance_norm=instance_norm)
         conv_7b = _conv_layer(conv_7a, num_maps, 7, 1, relu=True, instance_norm=instance_norm)
 
-        output_tensor = stack(output_tensor, conv_7b)
+        output_tensor = _stack(output_tensor, conv_7b)
 
     if max_size >= 9:
 
         conv_9a = _conv_layer(input, num_maps, 9, 1, relu=True, instance_norm=instance_norm)
         conv_9b = _conv_layer(conv_9a, num_maps, 9, 1, relu=True, instance_norm=instance_norm)
 
-        output_tensor = stack(output_tensor, conv_9b)
+        output_tensor = _stack(output_tensor, conv_9b)
 
     return output_tensor
 
-def fourierDiscrim(input):
-    with tf.compat.v1.variable_scope("fourierDiscrim"):
-        
-        flat = tf.compat.v1.layers.flatten(input)
-
-        fc1 = _fully_connected_layer(flat, 1024)
-        fc2 = _fully_connected_layer(fc1, 1024)
-        fc3 = _fully_connected_layer(fc2, 1024)
-        fc4 = _fully_connected_layer(fc3, 1024)
-
-        out = tf.nn.softmax(_fully_connected_layer(fc4, 2, relu=False))
-    return out
-
-def stack(x, y):
+def _stack(x, y):
     return tf.concat([x, y], 3)
 
 
@@ -210,19 +305,28 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
 
-def _conv_layer(net, num_filters, filter_size, strides, relu=True, instance_norm=False, padding='SAME'):
+def _conv_layer(net, num_filters, filter_size, strides, relu=True, instance_norm=False, padding='SAME', leaky = True, use_bias=True, sn=False):
 
     weights_init = _conv_init_vars(net, num_filters, filter_size)
     strides_shape = [1, strides, strides, 1]
-    bias = tf.Variable(tf.constant(0.01, shape=[num_filters]))
 
-    net = tf.nn.conv2d(net, weights_init, strides_shape, padding=padding) + bias
+    if sn:
+        weights_init = _spectral_norm(weights_init)
+
+    net = tf.nn.conv2d(net, weights_init, strides_shape, padding=padding)
+
+    if use_bias:
+        bias = tf.Variable(tf.constant(0.01, shape=[num_filters]))
+        net = tf.nn.bias_add(net, bias)
 
     if instance_norm:
         net = _instance_norm(net)
 
     if relu:
-        net = tf.compat.v1.nn.leaky_relu(net)
+        if leaky:
+            net = tf.compat.v1.nn.leaky_relu(net)
+        else:
+            net = tf.compat.v1.nn.relu(net)
 
     return net
 
@@ -268,7 +372,7 @@ def _conv_init_vars(net, out_channels, filter_size, transpose=False):
     return weights_init
 
 
-def _conv_tranpose_layer(net, num_filters, filter_size, strides):
+def _conv_tranpose_layer(net, num_filters, filter_size, strides, relu=True, leaky = True, use_bias=True, sn=False):
     weights_init = _conv_init_vars(net, num_filters, filter_size, transpose=True)
 
     batch_size, rows, cols, in_channels = [i for i in net.get_shape()]
@@ -278,11 +382,29 @@ def _conv_tranpose_layer(net, num_filters, filter_size, strides):
     tf_shape = tf.stack(new_shape)
 
     strides_shape = [1, strides, strides, 1]
+
+    if sn:
+        weights_init = _spectral_norm(weights_init)
+
     net = tf.nn.conv2d_transpose(net, weights_init, tf_shape, strides_shape, padding='SAME')
 
-    return tf.compat.v1.nn.leaky_relu(net)
+    if use_bias:
+        bias = tf.Variable(tf.constant(0.01, shape=[num_filters]))
+        net = tf.nn.bias_add(net, bias)
+    if relu:
+        if leaky:
+            net = tf.compat.v1.nn.leaky_relu(net)
+        else:
+            net = tf.compat.v1.nn.relu(net)
+    
+    return net
 
-def _conv_pixel_shuffle(net, num_filters, filter_size, factor):
+def _nearest_neighbor(net, factor=2):
+    batch_size, rows, cols, in_channels = [i for i in net.get_shape()]
+    new_size = [rows * factor, cols * factor]
+    return tf.compat.v1.image.resize_nearest_neighbor(net, new_size)
+
+def _conv_pixel_shuffle_up(net, num_filters, filter_size, factor):
     weights_init = _conv_init_vars(net, num_filters*factor*2, filter_size)
 
     strides_shape = [1, 1, 1, 1]
@@ -291,6 +413,7 @@ def _conv_pixel_shuffle(net, num_filters, filter_size, factor):
     net = tf.nn.depth_to_space(net, factor)
 
     return tf.compat.v1.nn.leaky_relu(net)
+
 
 def _pixel_dcl(net, num_filters, filter_size, d_format='NHWC'):
     axis = (d_format.index('H'), d_format.index('W'))
@@ -328,5 +451,39 @@ def _get_mask(shape):
     mask = np.reshape(mask, shape, 'F')
     return tf.constant(mask, dtype=tf.float32)
 
-def max_pool(x, n):
+def _max_pool(x, n):
     return tf.nn.max_pool(x, ksize=[1, n, n, 1], strides=[1, n, n, 1], padding='VALID')
+
+def _global_sum_pool(x):
+    return tf.reduce_sum(x, axis=[1, 2])
+
+def _nearest_neighbor(net, factor=2):
+    batch_size, rows, cols, in_channels = [i for i in net.get_shape()]
+    new_size = [rows * factor, cols * factor]
+    return tf.compat.v1.image.resize_nearest_neighbor(net, new_size)
+
+def _spectral_norm(w, iteration=1):
+    w_shape = w.shape.as_list()
+    w = tf.reshape(w, [-1, w_shape[-1]])
+
+    u = tf.Variable(tf.random.normal([1, w_shape[-1]]), dtype=tf.float32)
+
+    u_hat = u
+    v_hat = None
+    for i in range(iteration):
+        v_ = tf.matmul(u_hat, tf.transpose(w))
+        v_hat = tf.nn.l2_normalize(v_)
+
+        u_ = tf.matmul(v_hat, w)
+        u_hat = tf.nn.l2_normalize(u_)
+
+    u_hat = tf.stop_gradient(u_hat)
+    v_hat = tf.stop_gradient(v_hat)
+
+    sigma = tf.matmul(tf.matmul(v_hat, w), tf.transpose(u_hat))
+
+    with tf.control_dependencies([u.assign(u_hat)]):
+        w_norm = w / sigma
+        w_norm = tf.reshape(w_norm, w_shape)
+
+    return w_norm
