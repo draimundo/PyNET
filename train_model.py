@@ -7,17 +7,20 @@ import sys
 import os
 
 from tqdm import tqdm
+from RAdam import RAdamOptimizer
 from load_dataset import load_training_batch, load_val_data
-from model import PyNET, texture_d
+from model import pynet_g, texture_d, unet_d
 import utils
 import vgg
 import lpips_tf
 
+from skimage.filters import window
+
 # Processing command arguments
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
 triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
-dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale,\
-fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips\
+dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att,\
+fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet\
     = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -46,7 +49,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Get the processed enhanced image
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
-        PyNET(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale)
+        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att)
 
     if level == 5:
         enhanced = output_l5
@@ -91,7 +94,6 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if fac_ssim > 0:
             loss_generator += loss_ssim * fac_ssim
 
-
     # MS-SSIM loss
     if level < 1: #MS-SSIM needs at least 11*2^4=176*176 images
         loss_ms_ssim = 1 - tf.reduce_mean(tf.image.ssim_multiscale(enhanced_gray, dslr_gray, 1.0))
@@ -99,8 +101,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         loss_text.append("loss_ms_ssim")
         if fac_ms_ssim > 0:
             loss_generator += loss_ms_ssim * fac_ms_ssim
-        
-
+    
     # Color loss
     if fac_color > 0:
         enhanced_blur = utils.blur(enhanced)
@@ -109,6 +110,17 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         loss_generator += loss_color * fac_color
         loss_list.append(loss_color)
         loss_text.append("loss_color")
+
+    # Huber loss
+    delta = 1
+    abs_error = tf.abs(tf.math.subtract(enhanced, dslr_))
+    quadratic = tf.math.minimum(abs_error, delta)
+    linear = tf.math.subtract(abs_error, quadratic)
+    loss_huber = tf.reduce_mean(0.5*tf.math.square(quadratic)+linear)
+    if fac_huber > 0:
+        loss_generator += loss_huber * fac_huber
+        loss_list.append(loss_huber)
+        loss_text.append("loss_huber")
 
     # Content loss
     CONTENT_LAYER = 'relu5_4'
@@ -135,6 +147,45 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         loss_list.append(loss_texture_g)
         loss_text.append("loss_texture")
 
+    ## Fourier loss
+    if fac_fourier > 0:
+        h2d = np.float32(window('hann', (TARGET_WIDTH, TARGET_HEIGHT)))
+        hann2d = tf.stack([h2d,h2d,h2d],axis=2) #stack for 3 color channels
+
+        enhanced_filter = tf.cast(tf.multiply(enhanced, hann2d),tf.float32)
+        dslr_filter = tf.cast(tf.multiply(dslr_, hann2d),tf.float32)
+
+        # from NHWC to NCHW and back, rfft2d performed on 2 innermost dimensions
+        enhanced_fft = tf.signal.rfft2d(tf.transpose(enhanced_filter, [0, 3, 1, 2]))
+        enhanced_fft = tf.transpose(enhanced_fft,[0,2,3,1])
+        enhanced_abs = tf.abs(enhanced_fft)
+        enhanced_angle = tf.math.angle(enhanced_fft)
+
+        dslr_fft = tf.signal.rfft2d(tf.transpose(dslr_filter, [0, 3, 1, 2]))
+        dslr_fft = tf.transpose(dslr_fft,[0,2,3,1])
+        dslr_abs = tf.abs(dslr_fft)
+        dslr_angle = tf.math.angle(dslr_fft)
+
+        loss_fourier = tf.reduce_mean(tf.abs(tf.math.subtract(enhanced_fft, dslr_fft)))
+        
+        loss_list.append(loss_fourier)
+        loss_text.append("loss_fourier")
+        loss_generator += loss_fourier * fac_fourier
+
+    if fac_unet > 0:
+        adv_real = dslr_
+        adv_fake = enhanced
+
+        pred_real = unet_d(adv_real, activation=False)
+        pred_fake = unet_d(adv_fake, activation=False)
+
+        loss_unet_g = -tf.reduce_mean(tf.math.log(tf.clip_by_value(tf.nn.sigmoid(pred_fake - pred_real), 1e-10, 1.0)))
+        loss_unet_d = -tf.reduce_mean(tf.math.log(tf.clip_by_value(tf.nn.sigmoid(pred_real - pred_fake), 1e-10, 1.0)))
+
+        loss_generator += loss_unet_g * fac_unet
+        loss_list.append(loss_unet_g)
+        loss_text.append("loss_unet")
+
     ## LPIPS
     loss_lpips = tf.reduce_mean(lpips_tf.lpips(enhanced, dslr_, net='alex'))
     loss_list.append(loss_lpips)
@@ -147,18 +198,28 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     loss_text.insert(0, "loss_generator")
 
     # Optimize network parameters
-    generator_vars = [v for v in tf.compat.v1.global_variables() if v.name.startswith("generator")]
-    train_step_gen = tf.compat.v1.train.AdamOptimizer(learning_rate).minimize(loss_generator, var_list=generator_vars)
+    vars_pynet_g = [v for v in tf.compat.v1.global_variables() if v.name.startswith("pynet_g")]
+    train_step_pynet_g = RAdamOptimizer(learning_rate).minimize(loss_generator, var_list=vars_pynet_g)
 
     if fac_texture > 0:
+        loss_texture_g_ = 0.0
+        n_texture_d_ = 0.0
+        lr_texture_d = learning_rate
         vars_texture_d = [v for v in tf.compat.v1.global_variables() if v.name.startswith("texture_d")]
-        train_step_texture_d = tf.compat.v1.train.AdamOptimizer(learning_rate/1000.0).minimize(loss_texture_d, var_list=vars_texture_d)
+        train_step_texture_d = RAdamOptimizer(lr_texture_d/10000.0).minimize(loss_texture_d, var_list=vars_texture_d)
 
+    if fac_unet > 0:
+        loss_unet_g_ = 0.0
+        n_unet_d_ = 0.0
+        lr_unet_d = learning_rate
+        vars_unet_d = [v for v in tf.compat.v1.global_variables() if v.name.startswith("unet_d")]
+        train_step_unet_d = RAdamOptimizer(lr_unet_d/10000.0).minimize(loss_unet_d, var_list=vars_unet_d)
+    
     # Initialize and restore the variables
     print("Initializing variables")
     sess.run(tf.compat.v1.global_variables_initializer())
 
-    saver = tf.compat.v1.train.Saver(var_list=generator_vars, max_to_keep=100)
+    saver = tf.compat.v1.train.Saver(var_list=vars_pynet_g, max_to_keep=100)
 
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir, exist_ok=True)
@@ -192,12 +253,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     logs = open(model_dir + "logs_" + str(iter_start) + "-" + str(num_train_iters) + ".txt", "w+")
     logs.close()
 
-    training_loss = 0.0
-    if fac_texture > 0:
-        n_texture_d_ = 0.0
-    
-    maxPSNR = 0.0
-    minLPIPS = 0.0
+    loss_pynet_g_ = 0.0
 
     for i in tqdm(range(iter_start, num_train_iters + 1)):
         # Train texture discriminator
@@ -213,34 +269,46 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
                 [loss_temp, temp] = sess.run([loss_texture_d, train_step_texture_d], feed_dict=feed_texture_d)
                 n_texture_d_ += 1
 
+        # Train unet discriminator
+        if fac_unet > 0:
+            idx_unet_d = np.random.randint(0, train_size, batch_size)
+            phone_unet_d = train_data[idx_unet_d]
+            dslr_unet_d = train_answ[idx_unet_d]
+
+            feed_unet_d = {phone_: phone_unet_d, dslr_: dslr_unet_d}
+            [loss_g, loss_d] = sess.run([loss_unet_g, loss_unet_d], feed_dict=feed_unet_d)
+
+            if loss_g < 3*loss_d:
+                [loss_temp, temp] = sess.run([loss_unet_d, train_step_unet_d], feed_dict=feed_unet_d)
+                n_unet_d_ += 1
 
         # Train PyNET model
-        idx_train = np.random.randint(0, train_size, batch_size)
-
-        phone_images = train_data[idx_train]
-        dslr_images = train_answ[idx_train]
+        idx_g = np.random.randint(0, train_size, batch_size)
+        phone_g = train_data[idx_g]
+        dslr_g = train_answ[idx_g]
 
         # Random flips and rotations
         for k in range(batch_size):
             random_rotate = np.random.randint(1, 100) % 4
-            phone_images[k] = np.rot90(phone_images[k], random_rotate)
-            dslr_images[k] = np.rot90(dslr_images[k], random_rotate)
+            phone_g[k] = np.rot90(phone_g[k], random_rotate)
+            dslr_g[k] = np.rot90(dslr_g[k], random_rotate)
             random_flip = np.random.randint(1, 100) % 2
-
             if random_flip == 1:
-                phone_images[k] = np.flipud(phone_images[k])
-                dslr_images[k] = np.flipud(dslr_images[k])
+                phone_g[k] = np.flipud(phone_g[k])
+                dslr_g[k] = np.flipud(dslr_g[k])
 
-        # Training step
-        [loss_temp, temp] = sess.run([loss_generator, train_step_gen], feed_dict={phone_: phone_images, dslr_: dslr_images})
-        training_loss += loss_temp / eval_step
+        feed_g = {phone_: phone_g, dslr_: dslr_g}
+        [loss_temp, temp] = sess.run([loss_generator, train_step_pynet_g], feed_dict=feed_g)
+        loss_pynet_g_ += loss_temp / eval_step
 
         # Evaluate PyNET model
         if i % eval_step == 0:
-            val_losses_gen = np.zeros((1, len(loss_text)))
+            val_losses_g = np.zeros((1, len(loss_text)))
 
             if fac_texture > 0:
                 val_loss_texture_d = 0.0
+            if fac_unet > 0:
+                val_loss_unet_d = 0.0
 
             for j in range(num_val_batches):
                 be = j * batch_size
@@ -253,21 +321,22 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
                 toRun = [loss_list]
                 
                 loss_temp = sess.run(toRun, feed_dict=valdict)
-
-                val_losses_gen += np.asarray(loss_temp) / num_val_batches
+                val_losses_g += np.asarray(loss_temp) / num_val_batches
 
                 if fac_texture > 0:
                     loss_temp = sess.run(loss_texture_d, feed_dict=valdict)
                     val_loss_texture_d += loss_temp / num_val_batches
+                if fac_unet > 0:
+                    loss_temp = sess.run(loss_unet_d, feed_dict=valdict)
+                    val_loss_unet_d += loss_temp / num_val_batches
 
-            logs_gen = "step %d | training: %.4g,  "  % (i, training_loss)
+            logs_gen = "step %d | training: %.4g,  "  % (i, loss_pynet_g_)
             for idx, loss in enumerate(loss_text):
-                logs_gen += "%s: %.4g; " % (loss, val_losses_gen[0][idx])
+                logs_gen += "%s: %.4g; " % (loss, val_losses_g[0][idx])
             if fac_texture > 0:
                 logs_gen += " | texture_d loss: %.4g; n_texture_d: %.4g" % (val_loss_texture_d, n_texture_d_)
-            if maxPSNR < val_losses_gen[0][loss_text.index("metric_psnr")]:
-                maxPSNR = val_losses_gen[0][loss_text.index("metric_psnr")]
-                logs_gen += "\n max PSNR!"
+            if fac_unet > 0:
+                logs_gen += " | unet_d loss: %.4g; n_unet_d: %.4g" % (val_loss_unet_d, n_unet_d_)
 
             print(logs_gen)
 
@@ -290,9 +359,11 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
                                         before_after)
                     idx += 1
 
-            training_loss = 0.0
+            loss_pynet_g_ = 0.0
             if fac_texture > 0:
                 n_texture_d_ = 0.0
+            if fac_unet > 0:
+                n_unet_d_ = 0.0
 
             # Saving the model that corresponds to the current iteration
             saver.save(sess, model_dir + "pynet_level_" + str(level) + "_iteration_" + str(i) + ".ckpt", write_meta_graph=False)

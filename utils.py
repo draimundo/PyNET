@@ -7,7 +7,7 @@ import numpy as np
 import sys
 import os
 
-NUM_DEFAULT_TRAIN_ITERS = [200000, 200000, 200000, 200000, 2000, 1000]
+NUM_DEFAULT_TRAIN_ITERS = [100000, 35000, 20000, 20000, 5000, 5000]
 DEFAULT_BATCH_SIZE = [10, 12, 18, 48, 50, 50]
 
 def process_command_args(arguments):
@@ -15,7 +15,7 @@ def process_command_args(arguments):
     # Specifying the default parameters
 
     level = 5
-    batch_size = 50
+    batch_size = None
 
     train_size = 5000
     learning_rate = 5e-5
@@ -38,6 +38,9 @@ def process_command_args(arguments):
     fac_vgg = 0
     fac_texture = 0
     fac_lpips = 0
+    fac_huber = 0
+    fac_fourier = 0
+    fac_unet = 0
 
     over_dir = 'mediatek_raw_over/'
     under_dir = 'mediatek_raw_under/'
@@ -46,9 +49,9 @@ def process_command_args(arguments):
     down_exposure = False
 
     upscale = 'transpose'
-
-
-
+    downscale = 'maxpool'
+    self_att = False
+ 
     for args in arguments:
 
         if args.startswith("level"):
@@ -110,6 +113,15 @@ def process_command_args(arguments):
         if args.startswith("fac_lpips"):
             fac_lpips = float(args.split("=")[1])
             default_facs = False
+        if args.startswith("fac_huber"):
+            fac_huber = float(args.split("=")[1])
+            default_facs = False
+        if args.startswith("fac_fourier"):
+            fac_fourier = float(args.split("=")[1])
+            default_facs = False
+        if args.startswith("fac_unet"):
+            fac_unet = float(args.split("=")[1])
+            default_facs = False
 
         if args.startswith("triple_exposure"):
             triple_exposure = eval(args.split("=")[1])
@@ -124,9 +136,16 @@ def process_command_args(arguments):
 
         if args.startswith("upscale"):
             upscale = args.split("=")[1]
+        if args.startswith("downscale"):
+            downscale = args.split("=")[1]
+        if args.startswith("self_att"):
+            self_att = eval(args.split("=")[1])
 
     if num_train_iters is None:
         num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
+
+    if batch_size is None:
+        batch_size = DEFAULT_BATCH_SIZE[level]
 
     if restore_iter == 0 and level < 5:
         restore_iter = get_last_iter(level + 1, model_dir)
@@ -172,12 +191,15 @@ def process_command_args(arguments):
         " color:" + str(fac_color) +
         " vgg:" + str(fac_vgg) +
         " texture:" + str(fac_texture) +
-        " lpips:" + str(fac_lpips) )
+        " lpips:" + str(fac_lpips) +
+        " huber:" + str(fac_huber) +
+        " fourier:" + str(fac_fourier) +
+        " unet:" + str(fac_unet) )
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
         triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
-        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale,\
-        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips\
+        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att,\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet
 
 def process_test_model_args(arguments):
     out_dir = 'single_exp/'
