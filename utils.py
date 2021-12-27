@@ -279,7 +279,7 @@ def process_evaluate_model_args(arguments):
     down_exposure = False
     upscale = 'transpose'
     downscale = 'maxpool'
-    self_att = True
+    self_att = False
 
     for args in arguments:
         if args.startswith("dataset_dir"):
