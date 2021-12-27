@@ -12,7 +12,7 @@ def pynet_g(input, instance_norm=True, instance_norm_level_1=False, upscale="tra
         conv_l1_d1 = _conv_multi_block(input, 3, num_maps=32, instance_norm=False)              # 128 -> 128
         pool1 = _downscale(conv_l1_d1, 64, 3, 2, downscale)                                     # 128 -> 64
         if self_att:
-            pool1 = _stack(pool1, _self_attention(pool1, 64, sn=True))
+            pool1 = _self_attention(pool1, 128, sn=True)
 
         conv_l2_d1 = _conv_multi_block(pool1, 3, num_maps=64, instance_norm=instance_norm)      # 64 -> 64
         pool2 = _downscale(conv_l2_d1, 128, 3, 2, downscale)                                    # 64 -> 32
