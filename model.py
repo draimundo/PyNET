@@ -237,7 +237,7 @@ def _self_attention(x, num_filters, sn=False):
     beta = tf.nn.softmax(s)
 
     prod = tf.matmul(beta, _hw_flatten(h))
-    prod = tf.reshape(prod, shape=[batch_size, rows, cols, num_filters])
+    prod = tf.reshape(prod, shape=[batch_size, rows, cols, num_filters//8])
 
     o = _conv_layer(prod, num_filters=in_channels, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
     gamma = tf.Variable(tf.zeros([1]))
