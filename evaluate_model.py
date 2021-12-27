@@ -5,7 +5,7 @@ from tqdm import tqdm
 import sys
 
 from load_dataset import load_test_data
-from model import PyNET
+from model import pynet_g
 
 import utils
 import vgg
@@ -13,7 +13,7 @@ import vgg
 import niqe
 import lpips_tf
 
-dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
+dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
 
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 PATCH_WIDTH, PATCH_HEIGHT = 128, 128
@@ -42,7 +42,7 @@ with tf.compat.v1.Session(config=config) as sess:
     dslr_ = tf.compat.v1.placeholder(tf.float32, [batch_size, TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])
 
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
-        PyNET(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale)
+        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att)
 
     if level == 5:
         enhanced = output_l5
@@ -103,6 +103,15 @@ with tf.compat.v1.Session(config=config) as sess:
     loss_lpips = tf.reduce_mean(lpips_tf.lpips(enhanced, dslr_, net='vgg'))
     loss_list.append(loss_lpips)
     loss_text.append("loss_lpips")
+
+    ## Huber loss
+    delta = 1
+    abs_error = tf.abs(tf.math.subtract(enhanced, dslr_))
+    quadratic = tf.math.minimum(abs_error, delta)
+    linear = tf.math.subtract(abs_error, quadratic)
+    loss_huber = tf.reduce_mean(0.5*tf.math.square(quadratic)+linear)
+    loss_list.append(loss_huber)
+    loss_text.append("loss_huber")
 
     ## NIQE evaluator
     niqe = niqe.create_evaluator()
