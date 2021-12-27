@@ -228,20 +228,24 @@ def _resblock_up(input, num_filters, use_bias=True, sn=False):
     return x + input
 
 def _self_attention(x, num_filters, sn=False):
+    batch_size, rows, cols, in_channels = [i for i in x.get_shape()]
     f = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
     g = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
-    h = _conv_layer(x, num_filters=num_filters, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
+    h = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
 
     s = tf.matmul(_hw_flatten(g), _hw_flatten(f), transpose_b=True)
     beta = tf.nn.softmax(s)
 
-    o = tf.matmul(beta, _hw_flatten(h))
+    prod = tf.matmul(beta, _hw_flatten(h))
+    prod = tf.reshape(prod, shape=[batch_size, rows, cols, num_filters])
+
+    o = _conv_layer(prod, num_filters=in_channels, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
     gamma = tf.Variable(tf.zeros([1]))
 
     o = tf.reshape(o, shape=x.shape)  # [bs, h, w, C]
-    x = gamma * o + x
+    y = gamma * o + x
 
-    return x
+    return y
 
 def _self_attention_v2(x, num_filters, sn=False):
     f = _conv_layer(x, num_filters=num_filters//8, filter_size=1, strides=1, relu=False, use_bias=False, sn=sn)
