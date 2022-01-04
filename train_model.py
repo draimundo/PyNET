@@ -19,21 +19,26 @@ from skimage.filters import window
 # Processing command arguments
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
 triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
-dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att,\
+dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat,\
 fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet\
     = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
-PATCH_WIDTH, PATCH_HEIGHT = 128, 128
-PATCH_DEPTH = 4
+if flat:
+    FAC_PATCH = 2
+    PATCH_DEPTH = 1
+else:
+    FAC_PATCH = 1
+    PATCH_DEPTH = 4
+PATCH_WIDTH, PATCH_HEIGHT = 128*FAC_PATCH, 128*FAC_PATCH
 if triple_exposure:
     PATCH_DEPTH *= 3
 elif up_exposure or down_exposure:
     PATCH_DEPTH *= 2
 
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
-TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
-TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE)
+TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE / FAC_PATCH)
+TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE / FAC_PATCH)
 TARGET_DEPTH = 3
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
@@ -49,7 +54,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Get the processed enhanced image
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
-        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att)
+        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att, flat=flat)
 
     if level == 5:
         enhanced = output_l5
@@ -234,11 +239,11 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Loading training and val data
     print("Loading val data...")
-    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)
+    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
     print("Val data was loaded\n")
 
     print("Loading training data...")
-    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)
+    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
     print("Training data was loaded\n")
 
     VAL_SIZE = val_data.shape[0]
@@ -373,4 +378,4 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if i % 1000 == 0  and i > 0:
             del train_data
             del train_answ
-            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)
+            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
