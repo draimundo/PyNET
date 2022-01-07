@@ -52,6 +52,7 @@ def process_command_args(arguments):
     downscale = 'maxpool'
     self_att = False
     flat = 0
+    mix_input = False
  
     for args in arguments:
 
@@ -143,6 +144,8 @@ def process_command_args(arguments):
             self_att = eval(args.split("=")[1])
         if args.startswith("flat"):
             flat = int(args.split("=")[1])
+        if args.startswith("mix_input"):
+            mix_input = eval(args.split("=")[1])
 
     if num_train_iters is None:
         num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
@@ -183,6 +186,7 @@ def process_command_args(arguments):
     print("Downscaling method: " + downscale)
     print("Self-attention :" + str(self_att))
     print("Flat: " + str(flat))
+    print("Flat+channels :" + str(mix_input))
     print("Triple exposure: " + str(triple_exposure))
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
@@ -204,7 +208,7 @@ def process_command_args(arguments):
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
         triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
-        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat,\
+        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input,\
         fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet
 
 def process_test_model_args(arguments):
@@ -292,6 +296,7 @@ def process_evaluate_model_args(arguments):
     downscale = 'maxpool'
     self_att = False
     flat = 0
+    mix_input = False
 
     for args in arguments:
         if args.startswith("dataset_dir"):
@@ -347,6 +352,8 @@ def process_evaluate_model_args(arguments):
             self_att = eval(args.split("=")[1])
         if args.startswith("flat"):
             flat = int(args.split("=")[1])
+        if args.startswith("mix_input"):
+            mix_input = eval(args.split("=")[1])
 
     if restore_iter == 0:
         restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
@@ -365,6 +372,7 @@ def process_evaluate_model_args(arguments):
     print("Downscaling method: " + downscale)
     print("Self-attention :" + str(self_att))
     print("Flat: " + str(flat))
+    print("Flat+channels :" + str(mix_input))
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
     print("Triple exposure: " + str(triple_exposure))
@@ -372,7 +380,7 @@ def process_evaluate_model_args(arguments):
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
 
-    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input
 
 def get_last_iter(level, model_dir):
 
