@@ -4,13 +4,18 @@ import tensorflow as tf
 import numpy as np
 
 
-def pynet_g(input, instance_norm=True, instance_norm_level_1=False, upscale="transpose", downscale="maxpool", self_att=False, flat=0):
+def pynet_g(input, instance_norm=True, instance_norm_level_1=False, upscale="transpose", downscale="maxpool", self_att=False, flat=0, mix_input=False):
     with tf.compat.v1.variable_scope("pynet_g"):
         
         # -----------------------------------------
         # Downsampling layers
-        if flat > 0:
+        if mix_input:
+            flat_in = _extract_colors(input)
+            flat_conv = _conv_layer(input, 32, 4, strides=2)
+            input = _stack(flat_in, flat_conv)
+        elif flat > 0:
             input = _conv_layer(input, 32, flat, strides=2)
+        
         conv_l1_d1 = _conv_multi_block(input, 3, num_maps=32, instance_norm=False)              # 128 -> 128
         pool1 = _downscale(conv_l1_d1, 64, 3, 2, downscale)                                     # 128 -> 64
         # if self_att:
@@ -204,6 +209,9 @@ def unet_d(input, activation=True):
         if activation:
             out = tf.nn.softmax(out)
     return out
+
+def _extract_colors(input):
+    return tf.nn.space_to_depth(input, 2)
 
 def _resblock_down(input, num_filters, use_bias=True, sn=False):
     x = _instance_norm(input)
