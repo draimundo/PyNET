@@ -15,12 +15,12 @@ def process_command_args(arguments):
     # Specifying the default parameters
 
     level = 5
-    batch_size = 5
+    batch_size = None
 
     train_size = 5000
     learning_rate = 5e-5
 
-    eval_step = 10
+    eval_step = 1000
     restore_iter = 0
     num_train_iters = None
     save_mid_imgs = False
@@ -275,21 +275,21 @@ def process_test_model_args(arguments):
 
 def process_evaluate_model_args(arguments):
     dataset_dir = 'raw_images/'
-    model_dir = 'models/resnetshiftunetpt001/'
+    model_dir = 'models/single_exp/'
     dslr_dir = 'fujifilm/'
-    phone_dir = 'mediatek_raw_normal_png/'
-    over_dir = 'mediatek_raw_shiftover_png/'
-    under_dir = 'mediatek_raw_shiftunder_png/'
+    phone_dir = 'mediatek_raw/'
+    over_dir = 'mediatek_raw_over/'
+    under_dir = 'mediatek_raw_under/'
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
-    level = 0
+    level = 5
     batch_size = 10
-    use_gpu = False
-    restore_iter = 196000
-    triple_exposure = True
+    use_gpu = True
+    restore_iter = 0
+    triple_exposure = False
     up_exposure = False
     down_exposure = False
-    upscale = 'resnet'
-    downscale = 'resnet'
+    upscale = 'transpose'
+    downscale = 'maxpool'
     self_att = False
     flat = 0
 
