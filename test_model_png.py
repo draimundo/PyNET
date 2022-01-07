@@ -15,10 +15,22 @@ from load_dataset import extract_bayer_channels
 
 dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
 
+
+TARGET_DEPTH = 3
+if flat:
+    FAC_PATCH = 2
+    PATCH_DEPTH = 1
+else:
+    FAC_PATCH = 1
+    PATCH_DEPTH = 4
+if triple_exposure:
+    PATCH_DEPTH *= 3
+elif up_exposure or down_exposure:
+    PATCH_DEPTH *= 2
+
 IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
 DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
 MAX_SCALE = float(1) / (2 ** (5 - 1))
-IMAGE_HEIGHT, IMAGE_WIDTH = 1500, 2000
 
 IMAGE_HCROP= int(np.floor(IMAGE_HEIGHT * MAX_SCALE)/MAX_SCALE)
 IMAGE_WCROP = int(np.floor(IMAGE_WIDTH * MAX_SCALE)/MAX_SCALE)
@@ -26,15 +38,8 @@ IMAGE_WCROP = int(np.floor(IMAGE_WIDTH * MAX_SCALE)/MAX_SCALE)
 TARGET_HEIGHT = int(np.floor(IMAGE_HCROP * DSLR_SCALE))
 TARGET_WIDTH = int(np.floor(IMAGE_WCROP * DSLR_SCALE))
 
-PATCH_HEIGHT = int(np.floor(IMAGE_HCROP*DSLR_SCALE)/DSLR_SCALE)
-PATCH_WIDTH = int(np.floor(IMAGE_WCROP*DSLR_SCALE)/DSLR_SCALE)
-
-TARGET_DEPTH = 3
-PATCH_DEPTH = 4
-if triple_exposure:
-    PATCH_DEPTH *= 3
-elif up_exposure or down_exposure:
-    PATCH_DEPTH *= 2
+PATCH_HEIGHT = int(np.floor(IMAGE_HCROP*DSLR_SCALE)/DSLR_SCALE*FAC_PATCH)
+PATCH_WIDTH = int(np.floor(IMAGE_WCROP*DSLR_SCALE)/DSLR_SCALE*FAC_PATCH)
 
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
@@ -51,7 +56,7 @@ with tf.compat.v1.Session(config=config) as sess:
 
     # generate enhanced image
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 =\
-        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att)
+        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att, flat=flat)
 
     if level == 5:
         enhanced = output_l5
@@ -83,24 +88,26 @@ with tf.compat.v1.Session(config=config) as sess:
         print("Processing image " + photo)
 
         In = np.asarray(imageio.imread((test_dir_full + photo)))
-        In = extract_bayer_channels(In)
+        if not flat:
+            In = extract_bayer_channels(In)
 
         if triple_exposure:
             Io = np.asarray(imageio.imread((test_dir_over + photo)))
-            Io = extract_bayer_channels(Io)
-
             Iu = np.asarray(imageio.imread((test_dir_full + photo)))
-            Iu = extract_bayer_channels(Iu)
-
+            if not flat:
+                Io = extract_bayer_channels(Io)
+                Iu = extract_bayer_channels(Iu)
             I = np.dstack((In, Io, Iu))
         elif up_exposure:
             Io = np.asarray(imageio.imread((test_dir_over + photo)))
-            Io = extract_bayer_channels(Io)
+            if not flat:
+                Io = extract_bayer_channels(Io)
 
             I = np.dstack((In, Io))
         elif down_exposure:
             Iu = np.asarray(imageio.imread((test_dir_full + photo)))
-            Iu = extract_bayer_channels(Iu)
+            if not flat:
+                Iu = extract_bayer_channels(Iu)
 
             I = np.dstack((In, Iu))
         else:

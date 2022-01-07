@@ -15,12 +15,12 @@ def process_command_args(arguments):
     # Specifying the default parameters
 
     level = 5
-    batch_size = None
+    batch_size = 5
 
     train_size = 5000
     learning_rate = 5e-5
 
-    eval_step = 1000
+    eval_step = 10
     restore_iter = 0
     num_train_iters = None
     save_mid_imgs = False
@@ -216,7 +216,9 @@ def process_test_model_args(arguments):
     up_exposure = False
     down_exposure = False
     level = 5
-    upscale = "transpose"
+    upscale = 'transpose'
+    downscale = 'maxpool'
+    self_att = True
 
     for args in arguments:
 
@@ -247,6 +249,10 @@ def process_test_model_args(arguments):
 
         if args.startswith("upscale"):
             upscale = args.split("=")[1]
+        if args.startswith("downscale"):
+            downscale = args.split("=")[1]
+        if args.startswith("self_att"):
+            self_att = eval(args.split("=")[1])
 
     if restore_iter == 0:
         restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
@@ -259,31 +265,33 @@ def process_test_model_args(arguments):
     print("Training level: " + str(level))
     print("Path to Raw-to-RGB model network: " + model_dir)
     print("Upscaling method: " + upscale)
+    print("Downscaling method: " + downscale)
+    print("Self-attention :" + str(self_att))
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
     print("Triple exposure: " + str(triple_exposure))
 
-    return out_dir, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, up_exposure, down_exposure
+    return out_dir, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure
 
 def process_evaluate_model_args(arguments):
     dataset_dir = 'raw_images/'
-    model_dir = 'models/single_exp/'
+    model_dir = 'models/resnetshiftunetpt001/'
     dslr_dir = 'fujifilm/'
-    phone_dir = 'mediatek_raw/'
-    over_dir = 'mediatek_raw_over/'
-    under_dir = 'mediatek_raw_under/'
+    phone_dir = 'mediatek_raw_normal_png/'
+    over_dir = 'mediatek_raw_shiftover_png/'
+    under_dir = 'mediatek_raw_shiftunder_png/'
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
-    level = 5
+    level = 0
     batch_size = 10
-    use_gpu = True
-    restore_iter = 0
-    use_gpu = True
-    triple_exposure = False
+    use_gpu = False
+    restore_iter = 196000
+    triple_exposure = True
     up_exposure = False
     down_exposure = False
-    upscale = 'transpose'
-    downscale = 'maxpool'
+    upscale = 'resnet'
+    downscale = 'resnet'
     self_att = False
+    flat = 0
 
     for args in arguments:
         if args.startswith("dataset_dir"):
@@ -337,6 +345,8 @@ def process_evaluate_model_args(arguments):
             downscale = args.split("=")[1]
         if args.startswith("self_att"):
             self_att = eval(args.split("=")[1])
+        if args.startswith("flat"):
+            flat = int(args.split("=")[1])
 
     if restore_iter == 0:
         restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
@@ -354,6 +364,7 @@ def process_evaluate_model_args(arguments):
     print("Upscaling method: " + upscale)
     print("Downscaling method: " + downscale)
     print("Self-attention :" + str(self_att))
+    print("Flat: " + str(flat))
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
     print("Triple exposure: " + str(triple_exposure))
@@ -361,7 +372,7 @@ def process_evaluate_model_args(arguments):
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
 
-    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat
 
 def get_last_iter(level, model_dir):
 

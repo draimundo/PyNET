@@ -13,22 +13,30 @@ import vgg
 import niqe
 import lpips_tf
 
-dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
+dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat = utils.process_evaluate_model_args(sys.argv)
 
-DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
-PATCH_WIDTH, PATCH_HEIGHT = 128, 128
-PATCH_DEPTH = 4
+# Defining the size of the input and target image patches
+if flat:
+    FAC_PATCH = 2
+    PATCH_DEPTH = 1
+else:
+    FAC_PATCH = 1
+    PATCH_DEPTH = 4
+PATCH_WIDTH, PATCH_HEIGHT = 128*FAC_PATCH, 128*FAC_PATCH
 if triple_exposure:
     PATCH_DEPTH *= 3
 elif up_exposure or down_exposure:
     PATCH_DEPTH *= 2
-TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE)
-TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE)
+
+DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
+TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE / FAC_PATCH)
+TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE / FAC_PATCH)
 TARGET_DEPTH = 3
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
+
 print("Loading testing data...")
-test_data, test_answ = load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure)
+test_data, test_answ = load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
 print("Testing data was loaded\n")
 
 TEST_SIZE = test_data.shape[0]
@@ -42,7 +50,7 @@ with tf.compat.v1.Session(config=config) as sess:
     dslr_ = tf.compat.v1.placeholder(tf.float32, [batch_size, TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])
 
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
-        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att)
+        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att, flat=flat)
 
     if level == 5:
         enhanced = output_l5
