@@ -13,7 +13,7 @@ from model import pynet_g
 
 from load_dataset import extract_bayer_channels
 
-dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure = utils.process_evaluate_model_args(sys.argv)
+dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat = utils.process_evaluate_model_args(sys.argv)
 
 
 TARGET_DEPTH = 3
