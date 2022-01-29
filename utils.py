@@ -42,6 +42,7 @@ def process_command_args(arguments):
     fac_fourier = 0
     fac_unet = 0
 
+    dslr_dir = 'fujifilm/'
     over_dir = 'mediatek_raw_over/'
     under_dir = 'mediatek_raw_under/'
     triple_exposure = False
@@ -136,6 +137,9 @@ def process_command_args(arguments):
         if args.startswith("under_dir"):
             under_dir = args.split("=")[1]
 
+        if args.startswith("dslr_dir"):
+            dslr_dir = args.split("=")[1]
+
         if args.startswith("upscale"):
             upscale = args.split("=")[1]
         if args.startswith("downscale"):
@@ -181,6 +185,7 @@ def process_command_args(arguments):
     print("Restore Iteration: " + str(restore_iter))
     print("Path to Raw-to-RGB model network: " + model_dir)
     print("Path to the dataset: " + dataset_dir)
+    print("Path to dslr images: " + dslr_dir)
     print("Path to VGG-19 network: " + vgg_dir)
     print("Upscaling method: " + upscale)
     print("Downscaling method: " + downscale)
@@ -207,7 +212,7 @@ def process_command_args(arguments):
         " unet:" + str(fac_unet) )
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
-        triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
+        triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir,\
         dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input,\
         fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet
 

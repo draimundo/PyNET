@@ -24,9 +24,9 @@ def extract_bayer_channels(raw):
     return RAW_norm
 
 
-def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat=False):
+def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat=False, dslr_dir = 'fujifilm/'):
 
-    val_directory_dslr = dataset_dir + 'val/fujifilm/'
+    val_directory_dslr = dataset_dir + 'val/' + dslr_dir
     val_directory_phone = dataset_dir + 'val/mediatek_raw/'
 
     val_directory_over = dataset_dir + 'val/' + over_dir
@@ -159,9 +159,9 @@ def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_ex
 
     return test_data, test_answ
 
-def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat = False):
+def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat = False, dslr_dir = 'fujifilm/'):
 
-    train_directory_dslr = dataset_dir + 'train/fujifilm/'
+    train_directory_dslr = dataset_dir + 'train/' + dslr_dir
     train_directory_phone = dataset_dir + 'train/mediatek_raw/'
 
     train_directory_over = dataset_dir + 'train/' + over_dir

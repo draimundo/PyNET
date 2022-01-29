@@ -18,7 +18,7 @@ from skimage.filters import window
 
 # Processing command arguments
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
-triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
+triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir,\
 dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input,\
 fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet\
     = utils.process_command_args(sys.argv)
@@ -239,11 +239,11 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Loading training and val data
     print("Loading val data...")
-    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
+    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat, dslr_dir)
     print("Val data was loaded\n")
 
     print("Loading training data...")
-    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
+    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat, dslr_dir)
     print("Training data was loaded\n")
 
     VAL_SIZE = val_data.shape[0]
@@ -378,4 +378,4 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if i % 1000 == 0  and i > 0:
             del train_data
             del train_answ
-            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
+            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat, dslr_dir)
