@@ -399,8 +399,8 @@ def get_last_iter(level, model_dir):
         return -1
 
 def log10(x):
-  numerator = tf.log(x)
-  denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
+  numerator = tf.math.log(x)
+  denominator = tf.math.log(tf.constant(10, dtype=numerator.dtype))
   return numerator / denominator
 
 def _tensor_size(tensor):
