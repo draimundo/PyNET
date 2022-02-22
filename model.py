@@ -409,9 +409,9 @@ def _conv_tranpose_layer(net, num_filters, filter_size, strides, relu=True, leak
 
     if padding=='SYMMETRIC':
         net = _symmetric_pad(net, filter_size, strides)
-        net = tf.nn.conv2d_transpose(net, weights_init, strides_shape, padding='VALID')
+        net = tf.nn.conv2d_transpose(net, weights_init, tf_shape, strides_shape, padding='VALID')
     else:
-        net = tf.nn.conv2d(net, weights_init, strides_shape, padding=padding)
+        net = tf.nn.conv2d_transpose(net, weights_init, tf_shape, strides_shape, padding='SAME')
 
     if use_bias:
         bias = tf.Variable(tf.constant(0.01, shape=[num_filters]))
