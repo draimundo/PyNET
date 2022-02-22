@@ -54,6 +54,7 @@ def process_command_args(arguments):
     self_att = False
     flat = 0
     mix_input = False
+    padding='SAME'
  
     for args in arguments:
 

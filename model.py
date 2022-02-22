@@ -516,11 +516,11 @@ def _spectral_norm(w, iteration=1):
 
 def _symmetric_pad(net, filter_size, strides):
     batch_size, in_height, in_width, in_channels = [i for i in net.get_shape()]
-    if (in_height % strides[1] == 0):
+    if (in_height % strides == 0):
         pad_along_height = max(filter_size - strides, 0)
     else:
         pad_along_height = max(filter_size - (in_height % strides), 0)
-    if (in_width % strides[2] == 0):
+    if (in_width % strides == 0):
         pad_along_width = max(filter_size - strides, 0)
     else:
         pad_along_width = max(filter_size - (in_width % strides), 0)
