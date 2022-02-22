@@ -150,6 +150,8 @@ def process_command_args(arguments):
             flat = int(args.split("=")[1])
         if args.startswith("mix_input"):
             mix_input = eval(args.split("=")[1])
+        if args.startswith("padding"):
+            padding = args.split("=")[1]
 
     if num_train_iters is None:
         num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
@@ -192,6 +194,7 @@ def process_command_args(arguments):
     print("Self-attention :" + str(self_att))
     print("Flat: " + str(flat))
     print("Flat+channels :" + str(mix_input))
+    print("Padding :" + str(padding))
     print("Triple exposure: " + str(triple_exposure))
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
@@ -213,7 +216,7 @@ def process_command_args(arguments):
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
         triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir,\
-        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input,\
+        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
         fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet
 
 def process_test_model_args(arguments):
@@ -263,6 +266,7 @@ def process_test_model_args(arguments):
         if args.startswith("self_att"):
             self_att = eval(args.split("=")[1])
 
+
     if restore_iter == 0:
         restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
@@ -302,6 +306,7 @@ def process_evaluate_model_args(arguments):
     self_att = False
     flat = 0
     mix_input = False
+    padding='SAME'
 
     for args in arguments:
         if args.startswith("dataset_dir"):
@@ -359,6 +364,8 @@ def process_evaluate_model_args(arguments):
             flat = int(args.split("=")[1])
         if args.startswith("mix_input"):
             mix_input = eval(args.split("=")[1])
+        if args.startswith("padding"):
+            padding = args.split("=")[1]
 
     if restore_iter == 0:
         restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
@@ -378,6 +385,7 @@ def process_evaluate_model_args(arguments):
     print("Self-attention :" + str(self_att))
     print("Flat: " + str(flat))
     print("Flat+channels :" + str(mix_input))
+    print("Padding :" + str(padding))
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
     print("Triple exposure: " + str(triple_exposure))
@@ -385,7 +393,7 @@ def process_evaluate_model_args(arguments):
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
 
-    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input, padding
 
 def get_last_iter(level, model_dir):
 
