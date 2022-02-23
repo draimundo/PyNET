@@ -98,22 +98,28 @@ with tf.compat.v1.Session(config=config) as sess:
                 Io = extract_bayer_channels(Io)
                 Iu = extract_bayer_channels(Iu)
             I = np.dstack((In, Io, Iu))
+            images[i,..., 0:PATCH_DEPTH] = I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]
         elif up_exposure:
             Io = np.asarray(imageio.imread((test_dir_over + photo)))
             if not flat:
                 Io = extract_bayer_channels(Io)
 
             I = np.dstack((In, Io))
+            images[i,..., 0:PATCH_DEPTH] = I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]
         elif down_exposure:
             Iu = np.asarray(imageio.imread((test_dir_full + photo)))
             if not flat:
                 Iu = extract_bayer_channels(Iu)
 
             I = np.dstack((In, Iu))
+            images[i,..., 0:PATCH_DEPTH] = I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]
         else:
             I = In
+            if flat:
+                images[i,..., 0] = I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]
+            else:
+                images[i,..., 0:PATCH_DEPTH] = I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]
 
-        images[i,...] = I[0:PATCH_HEIGHT, 0:PATCH_WIDTH, ...]
     print("Images loaded")
     # Run inference
 
