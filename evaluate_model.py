@@ -13,7 +13,7 @@ import vgg
 import niqe
 import lpips_tf
 
-dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input, padding = utils.process_evaluate_model_args(sys.argv)
+dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input, padding, norm, norm_level_1, norm_scale, sn = utils.process_evaluate_model_args(sys.argv)
 
 # Defining the size of the input and target image patches
 if flat:
@@ -50,7 +50,7 @@ with tf.compat.v1.Session(config=config) as sess:
     dslr_ = tf.compat.v1.placeholder(tf.float32, [batch_size, TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])
 
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
-        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att, flat=flat, mix_input=mix_input, padding=padding)
+        pynet_g(phone_, norm=norm, norm_scale=norm_scale, sn=sn, upscale=upscale, downscale=downscale, self_att=self_att, flat=flat, mix_input=mix_input, padding=padding)
 
     if level == 5:
         enhanced = output_l5

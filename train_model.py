@@ -18,9 +18,9 @@ from skimage.filters import window
 
 # Processing command arguments
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
-triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir,\
-dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
-fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet\
+        triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir, norm, norm_level_1, norm_scale, sn,\
+        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet\
     = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -54,7 +54,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
 
     # Get the processed enhanced image
     output_l0, output_l1, output_l2, output_l3, output_l4, output_l5 = \
-        pynet_g(phone_, instance_norm=True, instance_norm_level_1=False, upscale=upscale, downscale=downscale, self_att=self_att, flat=flat, mix_input=mix_input, padding=padding)
+        pynet_g(phone_, norm=norm, norm_scale=norm_scale, sn=sn, upscale=upscale, downscale=downscale, self_att=self_att, flat=flat, mix_input=mix_input, padding=padding)
 
     if level == 5:
         enhanced = output_l5

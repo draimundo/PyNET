@@ -55,6 +55,11 @@ def process_command_args(arguments):
     flat = 0
     mix_input = False
     padding='SAME'
+
+    norm='instance'
+    norm_level_1='none'
+    norm_scale='instance'
+    sn=True
  
     for args in arguments:
 
@@ -154,6 +159,16 @@ def process_command_args(arguments):
         if args.startswith("padding"):
             padding = args.split("=")[1]
 
+        if args.startswith("norm_level_1"):
+            norm_level_1 = args.split("=")[1]
+        if args.startswith("norm_scale"):
+            norm_scale = args.split("=")[1]
+        if args.startswith("norm"):
+            norm = args.split("=")[1]
+        if args.startswith("sn"):
+            sn = eval(args.split("=")[1])
+        
+
     if num_train_iters is None:
         num_train_iters = NUM_DEFAULT_TRAIN_ITERS[level]
 
@@ -199,6 +214,10 @@ def process_command_args(arguments):
     print("Triple exposure: " + str(triple_exposure))
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
+    print("Normalization: " + str(norm))
+    print("Layer Normalization: " + str(norm_level_1))
+    print("Rescale Normalization: " + str(norm_scale))
+    print("Spectral Normalization: " + str(sn))
     if triple_exposure:
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
@@ -216,7 +235,7 @@ def process_command_args(arguments):
         " unet:" + str(fac_unet) )
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
-        triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir,\
+        triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir, norm, norm_level_1, norm_scale, sn,\
         dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
         fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet
 
@@ -308,6 +327,10 @@ def process_evaluate_model_args(arguments):
     flat = 0
     mix_input = False
     padding='SAME'
+    norm='instance'
+    norm_level_1='none'
+    norm_scale='instance'
+    sn=True
 
     for args in arguments:
         if args.startswith("dataset_dir"):
@@ -368,6 +391,15 @@ def process_evaluate_model_args(arguments):
         if args.startswith("padding"):
             padding = args.split("=")[1]
 
+        if args.startswith("norm_level_1"):
+            norm_level_1 = args.split("=")[1]
+        if args.startswith("norm_scale"):
+            norm_scale = args.split("=")[1]
+        if args.startswith("norm"):
+            norm = args.split("=")[1]
+        if args.startswith("sn"):
+            sn = eval(args.split("=")[1])
+
     if restore_iter == 0:
         restore_iter = sorted(list(set([int((model_file.split("_")[-1]).split(".")[0])
                     for model_file in os.listdir(model_dir)
@@ -390,11 +422,15 @@ def process_evaluate_model_args(arguments):
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
     print("Triple exposure: " + str(triple_exposure))
+    print("Normalization: " + str(norm))
+    print("Layer Normalization: " + str(norm_level_1))
+    print("Rescale Normalization: " + str(norm_scale))
+    print("Spectral Normalization: " + str(sn))
     if triple_exposure:
         print("Path to the over dir: " + over_dir)
         print("Path to the under dir: " + under_dir)
 
-    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input, padding
+    return dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iter, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input, padding, norm, norm_level_1, norm_scale, sn
 
 def get_last_iter(level, model_dir):
 
