@@ -41,6 +41,7 @@ def process_command_args(arguments):
     fac_huber = 0
     fac_fourier = 0
     fac_unet = 0
+    fac_ab = 0
 
     dslr_dir = 'fujifilm/'
     over_dir = 'mediatek_raw_over/'
@@ -131,6 +132,9 @@ def process_command_args(arguments):
         if args.startswith("fac_unet"):
             fac_unet = float(args.split("=")[1])
             default_facs = False
+        if args.startswith("fac_ab"):
+            fac_ab = float(args.split("=")[1])
+            default_facs = False
 
         if args.startswith("triple_exposure"):
             triple_exposure = eval(args.split("=")[1])
@@ -215,7 +219,7 @@ def process_command_args(arguments):
     print("Up exposure: " + str(up_exposure))
     print("Down exposure: " + str(down_exposure))
     print("Normalization: " + str(norm))
-    print("Layer Normalization: " + str(norm_level_1))
+    print("First Level Normalization: " + str(norm_level_1))
     print("Rescale Normalization: " + str(norm_scale))
     print("Spectral Normalization: " + str(sn))
     if triple_exposure:
@@ -232,12 +236,13 @@ def process_command_args(arguments):
         " lpips:" + str(fac_lpips) +
         " huber:" + str(fac_huber) +
         " fourier:" + str(fac_fourier) +
-        " unet:" + str(fac_unet) )
+        " unet:" + str(fac_unet) +
+        " ab:" + str(fac_ab))
 
     return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
         triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir, norm, norm_level_1, norm_scale, sn,\
         dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
-        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet, fac_ab
 
 def process_test_model_args(arguments):
     out_dir = 'single_exp/'

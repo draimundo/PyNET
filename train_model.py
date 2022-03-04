@@ -15,12 +15,13 @@ import vgg
 import lpips_tf
 
 from skimage.filters import window
+from color_ops import rgb_to_lab
 
 # Processing command arguments
 level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
         triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir, norm, norm_level_1, norm_scale, sn,\
         dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
-        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet, fac_ab\
     = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -72,6 +73,8 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     # Losses
     dslr_gray = tf.image.rgb_to_grayscale(dslr_)
     enhanced_gray = tf.image.rgb_to_grayscale(enhanced)
+
+
 
     # MSE loss
     loss_mse = tf.reduce_mean(tf.math.squared_difference(enhanced, dslr_))
@@ -126,6 +129,17 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         loss_generator += loss_huber * fac_huber
         loss_list.append(loss_huber)
         loss_text.append("loss_huber")
+
+    ## AB loss
+    dslr_lab = rgb_to_lab(dslr_)
+    enhanced_lab = rgb_to_lab(enhanced)
+    enhanced_ab_blur = utils.blur(enhanced_lab)[..., -2:]
+    dslr_ab_blur = utils.blur(dslr_lab)[..., -2:]
+    loss_ab = tf.reduce_mean(tf.math.squared_difference(dslr_lab, enhanced_lab))
+    if fac_ab > 0:
+        loss_generator += loss_ab * fac_ab
+        loss_list.append(loss_ab)
+        loss_text.append("loss_ab")
 
     # Content loss
     CONTENT_LAYER = 'relu5_4'

@@ -13,6 +13,8 @@ import vgg
 import niqe
 import lpips_tf
 
+from color_ops import rgb_to_lab
+
 dataset_dir, dslr_dir, phone_dir, over_dir, under_dir, vgg_dir, batch_size, model_dir, restore_iters, use_gpu, triple_exposure, level, upscale, downscale, self_att, up_exposure, down_exposure, flat, mix_input, padding, norm, norm_level_1, norm_scale, sn = utils.process_evaluate_model_args(sys.argv)
 
 # Defining the size of the input and target image patches
@@ -70,6 +72,10 @@ with tf.compat.v1.Session(config=config) as sess:
     dslr_gray = tf.image.rgb_to_grayscale(dslr_)
     enhanced_gray = tf.image.rgb_to_grayscale(enhanced)
 
+    dslr_lab = rgb_to_lab(dslr_)
+    enhanced_lab = rgb_to_lab(enhanced)
+
+
     ## PSNR loss
     loss_psnr = tf.reduce_mean(tf.image.psnr(enhanced, dslr_, 1.0))
     loss_list = [loss_psnr]
@@ -85,6 +91,11 @@ with tf.compat.v1.Session(config=config) as sess:
     loss_l1 = tf.reduce_mean(tf.abs(tf.math.subtract(enhanced, dslr_)))
     loss_list.append(loss_l1)
     loss_text.append("loss_l1")
+
+    ## MSE loss
+    loss_mse = tf.reduce_mean(tf.math.squared_difference(enhanced, dslr_))
+    loss_list.append(loss_mse)
+    loss_text.append("loss_mse")
 
     ## Color loss
     # enhanced_blur = utils.blur(enhanced)
@@ -126,6 +137,13 @@ with tf.compat.v1.Session(config=config) as sess:
     loss_huber = tf.reduce_mean(0.5*tf.math.square(quadratic)+linear)
     loss_list.append(loss_huber)
     loss_text.append("loss_huber")
+
+    ## AB loss
+    enhanced_ab_blur = utils.blur(enhanced_lab)[..., -2:]
+    dslr_ab_blur = utils.blur(dslr_lab)[..., -2:]
+    loss_ab = tf.reduce_mean(tf.math.squared_difference(dslr_lab, enhanced_lab))
+    loss_list.append(loss_ab)
+    loss_text.append("loss_ab")
 
     ## NIQE evaluator
     niqe = niqe.create_evaluator()
