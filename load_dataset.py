@@ -35,10 +35,10 @@ def load_val_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, D
     val_directory_under = dataset_dir + 'val/' + under_dir
 
     PATCH_DEPTH = 4
-    FAC_SCALE = 1
+    FAC_SCALE = 2
     if flat:
         PATCH_DEPTH = 1
-        FAC_SCALE = 2
+        FAC_SCALE = 1
     if triple_exposure:
         PATCH_DEPTH *= 3
     elif up_exposure or down_exposure:
@@ -89,7 +89,7 @@ def load_val_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, D
                 val_data[i, ..., 0] = In
 
         I = Image.open(val_directory_dslr + str(i) + '.' + format_dslr)
-        I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
+        I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / FAC_SCALE), int(I.size[1] * DSLR_SCALE / FAC_SCALE)), resample=Image.BICUBIC))
         I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE/FAC_SCALE), int(PATCH_HEIGHT * DSLR_SCALE/FAC_SCALE), 3])) / 255
         val_answ[i, :] = I
 
@@ -104,10 +104,10 @@ def load_test_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, 
     test_directory_under = dataset_dir + 'test/' + under_dir
 
     PATCH_DEPTH = 4
-    FAC_SCALE = 1
+    FAC_SCALE = 2
     if flat:
         PATCH_DEPTH = 1
-        FAC_SCALE = 2
+        FAC_SCALE = 1
     if triple_exposure:
         PATCH_DEPTH *= 3
     elif up_exposure or down_exposure:
@@ -157,7 +157,7 @@ def load_test_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, 
                 test_data[i, ..., 0] = In
 
         I = Image.open(test_directory_dslr + str(i) + '.png')
-        I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
+        I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / FAC_SCALE), int(I.size[1] * DSLR_SCALE / FAC_SCALE)), resample=Image.BICUBIC))
         I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE/FAC_SCALE), int(PATCH_HEIGHT * DSLR_SCALE/FAC_SCALE), 3])) / 255
         test_answ[i, :] = I
 
@@ -174,10 +174,10 @@ def load_train_patch(dataset_dir, dslr_dir, phone_dir, TRAIN_SIZE, PATCH_WIDTH, 
     train_directory_under = dataset_dir + 'train/' + under_dir
 
     PATCH_DEPTH = 4
-    FAC_SCALE = 1
+    FAC_SCALE = 2
     if flat:
         PATCH_DEPTH = 1
-        FAC_SCALE = 2
+        FAC_SCALE = 1
     if triple_exposure:
         PATCH_DEPTH *= 3
     elif up_exposure or down_exposure:
@@ -244,7 +244,7 @@ def load_train_patch(dataset_dir, dslr_dir, phone_dir, TRAIN_SIZE, PATCH_WIDTH, 
                 train_data[i, ..., 0] = In
 
         I = Image.open(train_directory_dslr + str(img) + '.' + format_dslr)
-        I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
+        I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / FAC_SCALE), int(I.size[1] * DSLR_SCALE / FAC_SCALE)), resample=Image.BICUBIC))
         I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE / FAC_SCALE), int(PATCH_HEIGHT * DSLR_SCALE / FAC_SCALE), 3])) / 255
         train_answ[i, :] = I
 
