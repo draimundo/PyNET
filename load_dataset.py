@@ -8,6 +8,8 @@ import numpy as np
 from tqdm import tqdm
 import rawpy
 import matplotlib.pyplot as plt
+import pickle
+
 
 def extract_bayer_channels(raw):
 
@@ -24,10 +26,10 @@ def extract_bayer_channels(raw):
     return RAW_norm
 
 
-def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat=False, dslr_dir = 'fujifilm/'):
+def load_val_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat=False):
 
     val_directory_dslr = dataset_dir + 'val/' + dslr_dir
-    val_directory_phone = dataset_dir + 'val/mediatek_raw/'
+    val_directory_phone = dataset_dir + 'val/' + phone_dir
 
     val_directory_over = dataset_dir + 'val/' + over_dir
     val_directory_under = dataset_dir + 'val/' + under_dir
@@ -91,10 +93,10 @@ def load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exp
 
     return val_data, val_answ
 
-def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat = False):
+def load_test_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat = False):
 
-    test_directory_dslr = dataset_dir + 'test/fujifilm/'
-    test_directory_phone = dataset_dir + 'test/mediatek_raw/'
+    test_directory_dslr = dataset_dir + 'test/' + dslr_dir
+    test_directory_phone = dataset_dir + 'test/' + phone_dir
 
     test_directory_over = dataset_dir + 'test/' + over_dir
     test_directory_under = dataset_dir + 'test/' + under_dir
@@ -159,10 +161,12 @@ def load_test_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_ex
 
     return test_data, test_answ
 
-def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat = False, dslr_dir = 'fujifilm/'):
+def load_train_patch(dataset_dir, dslr_dir, phone_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure = False, down_exposure = False, flat=False, percentage=100, entropy='no', psnr='no', mix=0):
+    if percentage > 100:
+        percentage = 100
 
     train_directory_dslr = dataset_dir + 'train/' + dslr_dir
-    train_directory_phone = dataset_dir + 'train/mediatek_raw/'
+    train_directory_phone = dataset_dir + 'train/' + phone_dir
 
     train_directory_over = dataset_dir + 'train/' + over_dir
     train_directory_under = dataset_dir + 'train/' + under_dir
@@ -176,12 +180,28 @@ def load_training_batch(dataset_dir, TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, DSLR
         PATCH_DEPTH *= 3
     elif up_exposure or down_exposure:
         PATCH_DEPTH *= 2
+        
+    # get the image format (e.g. 'png')
+    format_dslr = str.split(os.listdir(train_directory_dslr)[0],'.')[-1]
 
+    # determine training image numbers by listing all files in the folder
     NUM_TRAINING_IMAGES = len([name for name in os.listdir(train_directory_phone)
                                if os.path.isfile(os.path.join(train_directory_phone, name))])
+    if entropy == 'high':
+        entropyList = pickle.load(file=open("entropyList.p", "rb"))
+        TRAIN_IMAGES = np.random.choice(entropyList[int((100-percentage)*NUM_TRAINING_IMAGES/100):-1], TRAIN_SIZE, replace=False)
+    elif entropy == 'low':
+        entropyList = pickle.load(file=open("entropyList.p", "rb"))
+        TRAIN_IMAGES = np.random.choice(entropyList[0:int(percentage*NUM_TRAINING_IMAGES/100)], TRAIN_SIZE, replace=False)
+    elif psnr == 'high':
+        psnrList = pickle.load(file=open("psnrList.p", "rb"))
+        TRAIN_IMAGES = np.random.choice(psnrList[int((100-percentage)*NUM_TRAINING_IMAGES/100):-1], TRAIN_SIZE, replace=False)
+    elif psnr =='low':
+        psnrList = pickle.load(file=open("psnrList.p", "rb"))
+        TRAIN_IMAGES = np.random.choice(psnrList[0:int(percentage*NUM_TRAINING_IMAGES/100)], TRAIN_SIZE, replace=False)
+    else:
+        TRAIN_IMAGES = np.random.choice(np.arange(0, int(percentage*NUM_TRAINING_IMAGES/100)), TRAIN_SIZE, replace=False)
 
-    TRAIN_IMAGES = np.random.choice(np.arange(0, NUM_TRAINING_IMAGES), TRAIN_SIZE, replace=False)
-    #TRAIN_IMAGES = np.arange(0, TRAIN_SIZE)
     train_data = np.zeros((TRAIN_SIZE, PATCH_WIDTH, PATCH_HEIGHT, PATCH_DEPTH))
     train_answ = np.zeros((TRAIN_SIZE, int(PATCH_WIDTH * DSLR_SCALE / FAC_SCALE), int(PATCH_HEIGHT * DSLR_SCALE / FAC_SCALE), 3))
 

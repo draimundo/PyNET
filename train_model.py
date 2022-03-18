@@ -1,6 +1,5 @@
 # Copyright 2020 by Andrey Ignatov. All Rights Reserved.
 
-import imageio
 import tensorflow as tf
 import numpy as np
 import sys
@@ -8,38 +7,41 @@ import os
 
 from tqdm import tqdm
 from RAdam import RAdamOptimizer
-from load_dataset import load_training_batch, load_val_data
+from load_dataset import load_train_patch, load_val_data
 from model import pynet_g, texture_d, unet_d
 import utils
 import vgg
 import lpips_tf
 
 from skimage.filters import window
-from color_ops import rgb_to_lab
 
 # Processing command arguments
-level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
-        triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir, norm, norm_level_1, norm_scale, sn,\
-        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
-        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet, fac_uv\
+dataset_dir, model_dir, result_dir, vgg_dir, dslr_dir, phone_dir, restore_iter,\
+        triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
+        patch_w, patch_h, batch_size, train_size, learning_rate, eval_step, num_train_iters, level, \
+        upscale, downscale, self_att, flat, mix_input, padding, norm, norm_level_1, norm_scale, sn,\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_fourier, fac_lpips, fac_huber, fac_unet, fac_uv \
     = utils.process_command_args(sys.argv)
 
 # Defining the size of the input and target image patches
 if flat:
-    FAC_PATCH = 2
+    FAC_PATCH = 1
     PATCH_DEPTH = 1
 else:
-    FAC_PATCH = 1
+    FAC_PATCH = 2
     PATCH_DEPTH = 4
-PATCH_WIDTH, PATCH_HEIGHT = 128*FAC_PATCH, 128*FAC_PATCH
 if triple_exposure:
     PATCH_DEPTH *= 3
 elif up_exposure or down_exposure:
     PATCH_DEPTH *= 2
 
-DSLR_SCALE = float(1) / (2 ** (max(level,0) - 1))
-TARGET_WIDTH = int(PATCH_WIDTH * DSLR_SCALE / FAC_PATCH)
-TARGET_HEIGHT = int(PATCH_HEIGHT * DSLR_SCALE / FAC_PATCH)
+PATCH_WIDTH = patch_w//FAC_PATCH
+PATCH_HEIGHT = patch_h//FAC_PATCH
+PATCH_SIZE = PATCH_WIDTH * PATCH_HEIGHT * 3
+
+DSLR_SCALE = float(1) / (2 ** (max(level,0)))
+TARGET_WIDTH = int(PATCH_WIDTH * FAC_PATCH * DSLR_SCALE)
+TARGET_HEIGHT = int(PATCH_HEIGHT * FAC_PATCH * DSLR_SCALE)
 TARGET_DEPTH = 3
 TARGET_SIZE = TARGET_WIDTH * TARGET_HEIGHT * TARGET_DEPTH
 
@@ -144,7 +146,7 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
     enhanced_lab = tf.image.rgb_to_yuv(enhanced)
     enhanced_uv_blur = utils.blur(enhanced_lab)[..., -2:]
     dslr_uv_blur = utils.blur(dslr_yuv)[..., -2:]
-    loss_uv = tf.reduce_mean(tf.math.squared_difference(dslr_uv_blur, enhanced_uv_blur))
+    loss_uv = tf.reduce_mean(tf.abs(tf.math.subtract(dslr_uv_blur, enhanced_uv_blur)))
     if fac_uv > 0:
         loss_generator += loss_uv * fac_uv
         loss_list.append(loss_uv)
@@ -260,13 +262,13 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         print("Restoring Variables of higher level")
         saver.restore(sess, model_dir + "pynet_level_" + str(level + 1) + "_iteration_" + str(restore_iter) + ".ckpt")
 
-    # Loading training and val data
-    print("Loading val data...")
-    val_data, val_answ = load_val_data(dataset_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat, dslr_dir)
-    print("Val data was loaded\n")
+    # Loading training and validation data
+    print("Loading validation data...")
+    val_data, val_answ = load_val_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
+    print("Validation data was loaded\n")
 
     print("Loading training data...")
-    train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat, dslr_dir)
+    train_data, train_answ = load_train_patch(dataset_dir, dslr_dir, phone_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)
     print("Training data was loaded\n")
 
     VAL_SIZE = val_data.shape[0]
@@ -317,14 +319,15 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         dslr_g = train_answ[idx_g]
 
         # Random flips and rotations
-        for k in range(batch_size):
-            random_rotate = np.random.randint(1, 100) % 4
-            phone_g[k] = np.rot90(phone_g[k], random_rotate)
-            dslr_g[k] = np.rot90(dslr_g[k], random_rotate)
-            random_flip = np.random.randint(1, 100) % 2
-            if random_flip == 1:
-                phone_g[k] = np.flipud(phone_g[k])
-                dslr_g[k] = np.flipud(dslr_g[k])
+        if flat == 0:
+            for k in range(batch_size):
+                random_rotate = np.random.randint(1, 100) % 4
+                phone_g[k] = np.rot90(phone_g[k], random_rotate)
+                dslr_g[k] = np.rot90(dslr_g[k], random_rotate)
+                random_flip = np.random.randint(1, 100) % 2
+                if random_flip == 1:
+                    phone_g[k] = np.flipud(phone_g[k])
+                    dslr_g[k] = np.flipud(dslr_g[k])
 
         feed_g = {phone_: phone_g, dslr_: dslr_g}
         [loss_temp, temp] = sess.run([loss_generator, train_step_pynet_g], feed_dict=feed_g)
@@ -376,18 +379,6 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
             logs.write('\n')
             logs.close()
 
-            # Save visual results for several val image crops
-            if save_mid_imgs:
-                enhanced_crops = sess.run(enhanced, feed_dict={phone_: visual_val_crops, dslr_: dslr_images})
-                idx = 0
-                for crop in enhanced_crops:
-                    if idx < 10:
-                        before_after = np.hstack((crop,
-                                        np.reshape(visual_target_crops[idx], [TARGET_HEIGHT, TARGET_WIDTH, TARGET_DEPTH])))
-                        imageio.imwrite("results/pynet_img_" + str(idx) + "_level_" + str(level) + "_iter_" + str(i) + ".jpg",
-                                        before_after)
-                    idx += 1
-
             loss_pynet_g_ = 0.0
             if fac_texture > 0:
                 n_texture_d_ = 0.0
@@ -401,4 +392,4 @@ with tf.Graph().as_default(), tf.compat.v1.Session() as sess:
         if i % 1000 == 0  and i > 0:
             del train_data
             del train_answ
-            train_data, train_answ = load_training_batch(dataset_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat, dslr_dir)
+            train_data, train_answ = load_train_patch(dataset_dir, dslr_dir, phone_dir, train_size, PATCH_WIDTH, PATCH_HEIGHT, DSLR_SCALE, triple_exposure, over_dir, under_dir, up_exposure, down_exposure, flat)

@@ -13,42 +13,32 @@ DEFAULT_BATCH_SIZE = [10, 12, 18, 48, 50, 50]
 def process_command_args(arguments):
 
     # Specifying the default parameters
-
-    level = 5
-    batch_size = None
-
-    train_size = 5000
-    learning_rate = 5e-5
-
-    eval_step = 1000
-    restore_iter = 0
-    num_train_iters = None
-    save_mid_imgs = False
-
-    model_dir = 'models/'
     dataset_dir = 'raw_images/'
+    result_dir = 'results/'
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'
-
-    default_facs = True
-    fac_mse = 0
-    fac_l1 = 0
-    fac_ssim = 0
-    fac_ms_ssim = 0
-    fac_color = 0
-    fac_vgg = 0
-    fac_texture = 0
-    fac_lpips = 0
-    fac_huber = 0
-    fac_fourier = 0
-    fac_unet = 0
-    fac_uv = 0
-
     dslr_dir = 'fujifilm/'
+    phone_dir = 'mediatek_raw/'
+    model_dir = 'testnet/'
     over_dir = 'mediatek_raw_over/'
     under_dir = 'mediatek_raw_under/'
+
     triple_exposure = False
     up_exposure = False
     down_exposure = False
+
+    # --- model weights ---
+    restore_iter = 0
+    # --- input size ---
+    patch_w = 256 # default size for MAI dataset
+    patch_h = 256 # default size for MAI dataset
+
+    # --- training options ---
+    batch_size = None
+    train_size = 5000
+    learning_rate = 1e-4
+    eval_step = 1000
+    num_train_iters = None
+    level = 5
 
     upscale = 'transpose'
     downscale = 'maxpool'
@@ -56,48 +46,93 @@ def process_command_args(arguments):
     flat = 0
     mix_input = False
     padding='SAME'
-
     norm='instance'
     norm_level_1='none'
     norm_scale='instance'
     sn=True
+
+    default_facs = True
+    fac_mse = 0
+    fac_l1 = 0
+    fac_ssim = 0
+    fac_ms_ssim = 30
+    fac_color = 0
+    fac_vgg = 0
+    fac_texture = 0
+    fac_lpips = 10
+    fac_huber = 300
+    fac_fourier = 0
+    fac_unet = 0
+    fac_uv = 0
  
     for args in arguments:
+        # --- data path ---
+        if args.startswith("dataset_dir"):
+            dataset_dir = args.split("=")[1]
+        if args.startswith("result_dir"):
+            result_dir = args.split("=")[1]
+        if args.startswith("vgg_dir"):
+            vgg_dir = args.split("=")[1]
+        if args.startswith("dslr_dir"):
+            dslr_dir = args.split("=")[1]
+        if args.startswith("phone_dir"):
+            phone_dir = args.split("=")[1]
+        if args.startswith("model_dir"):
+            model_dir = args.split("=")[1]
+        if args.startswith("over_dir"):
+            over_dir = args.split("=")[1]
+        if args.startswith("under_dir"):
+            under_dir = args.split("=")[1]
 
-        if args.startswith("level"):
-            level = int(args.split("=")[1])
+        if args.startswith("triple_exposure"):
+            triple_exposure = eval(args.split("=")[1])
+        if args.startswith("up_exposure"):
+            up_exposure = eval(args.split("=")[1])
+        if args.startswith("down_exposure"):
+            down_exposure = eval(args.split("=")[1])
 
-        if args.startswith("batch_size"):
-            batch_size = int(args.split("=")[1])
-
-        if args.startswith("train_size"):
-            train_size = int(args.split("=")[1])
-
-        if args.startswith("learning_rate"):
-            learning_rate = float(args.split("=")[1])
-
+        # --- model weights ---
         if args.startswith("restore_iter"):
             restore_iter = int(args.split("=")[1])
 
+        # --- input size ---
+        if args.startswith("patch_w"):
+            patch_w = int(args.split("=")[1])
+        if args.startswith("patch_h"):
+            patch_h = int(args.split("=")[1])
+
+        # --- training options ---
+        if args.startswith("batch_size"):
+            batch_size = int(args.split("=")[1])
+        if args.startswith("train_size"):
+            train_size = int(args.split("=")[1])
+        if args.startswith("learning_rate"):
+            learning_rate = float(args.split("=")[1])
+        if args.startswith("eval_step"):
+            eval_step = int(args.split("=")[1])
         if args.startswith("num_train_iters"):
             num_train_iters = int(args.split("=")[1])
 
-        # -----------------------------------
-
-        if args.startswith("model_dir"):
-            model_dir = args.split("=")[1]
-
-        if args.startswith("dataset_dir"):
-            dataset_dir = args.split("=")[1]
-
-        if args.startswith("vgg_dir"):
-            vgg_dir = args.split("=")[1]
-
-        if args.startswith("eval_step"):
-            eval_step = int(args.split("=")[1])
-
-        if args.startswith("save_mid_imgs"):
-            save_mid_imgs = eval(args.split("=")[1])
+        if args.startswith("upscale"):
+            upscale = args.split("=")[1]
+        if args.startswith("downscale"):
+            downscale = args.split("=")[1]
+        if args.startswith("self_att"):
+            self_att = eval(args.split("=")[1])
+        if args.startswith("flat"):
+            flat = int(args.split("=")[1])
+        if args.startswith("mix_input"):
+            mix_input = eval(args.split("=")[1])
+        if args.startswith("padding"):
+            padding = args.split("=")[1]
+        if args.startswith("norm_level_1"):
+            norm_level_1 = args.split("=")[1]
+        if args.startswith("norm_scale"):
+            norm_scale = args.split("=")[1]
+        if args.startswith("norm"):
+            norm = args.split("=")[1]
+        if args.startswith("sn"):
+            sn = eval(args.split("=")[1])
 
         if args.startswith("fac_mse"):
             fac_mse = float(args.split("=")[1])
@@ -120,57 +155,18 @@ def process_command_args(arguments):
         if args.startswith("fac_texture"):
             fac_texture = float(args.split("=")[1])
             default_facs = False
+        if args.startswith("fac_fourier"):
+            fac_fourier = float(args.split("=")[1])
+            default_facs = False
         if args.startswith("fac_lpips"):
             fac_lpips = float(args.split("=")[1])
             default_facs = False
         if args.startswith("fac_huber"):
             fac_huber = float(args.split("=")[1])
             default_facs = False
-        if args.startswith("fac_fourier"):
-            fac_fourier = float(args.split("=")[1])
-            default_facs = False
         if args.startswith("fac_unet"):
             fac_unet = float(args.split("=")[1])
             default_facs = False
-        if args.startswith("fac_uv"):
-            fac_uv = float(args.split("=")[1])
-            default_facs = False
-
-        if args.startswith("triple_exposure"):
-            triple_exposure = eval(args.split("=")[1])
-        if args.startswith("up_exposure"):
-            up_exposure = eval(args.split("=")[1])
-        if args.startswith("down_exposure"):
-            down_exposure = eval(args.split("=")[1])
-        if args.startswith("over_dir"):
-            over_dir = args.split("=")[1]
-        if args.startswith("under_dir"):
-            under_dir = args.split("=")[1]
-
-        if args.startswith("dslr_dir"):
-            dslr_dir = args.split("=")[1]
-
-        if args.startswith("upscale"):
-            upscale = args.split("=")[1]
-        if args.startswith("downscale"):
-            downscale = args.split("=")[1]
-        if args.startswith("self_att"):
-            self_att = eval(args.split("=")[1])
-        if args.startswith("flat"):
-            flat = int(args.split("=")[1])
-        if args.startswith("mix_input"):
-            mix_input = eval(args.split("=")[1])
-        if args.startswith("padding"):
-            padding = args.split("=")[1]
-
-        if args.startswith("norm_level_1"):
-            norm_level_1 = args.split("=")[1]
-        if args.startswith("norm_scale"):
-            norm_scale = args.split("=")[1]
-        if args.startswith("norm"):
-            norm = args.split("=")[1]
-        if args.startswith("sn"):
-            sn = eval(args.split("=")[1])
         
 
     if num_train_iters is None:
@@ -200,31 +196,41 @@ def process_command_args(arguments):
 
     print("The following parameters will be applied for CNN training:")
     print("Training level: " + str(level))
-    print("Batch size: " + str(batch_size))
-    print("Learning rate: " + str(learning_rate))
-    print("Training iterations: " + str(num_train_iters))
-    print("Evaluation step: " + str(eval_step))
-    print("Restore Iteration: " + str(restore_iter))
-    print("Path to Raw-to-RGB model network: " + model_dir)
     print("Path to the dataset: " + dataset_dir)
-    print("Path to dslr images: " + dslr_dir)
+    print("Path to result images: " + result_dir)
     print("Path to VGG-19 network: " + vgg_dir)
+    print("Path to RGB data from DSLR: " + dslr_dir)
+    print("Path to Raw data from phone: " + phone_dir)
+    print("Path to Raw-to-RGB model network: " + model_dir)
+    if triple_exposure:
+        print("Path to the over dir: " + over_dir)
+        print("Path to the under dir: " + under_dir)
+    
+    print("Triple exposure: " + str(triple_exposure))
+    print("Up exposure: " + str(up_exposure))
+    print("Down exposure: " + str(down_exposure))
+
+    print("Restore Iteration: " + str(restore_iter))
+    print("Patch width: " + str(patch_w))
+    print("Patch height: " + str(patch_h))
+
+    print("Batch size: " + str(batch_size))
+    print("Training size: " + str(train_size))
+    print("Learning rate: " + str(learning_rate))
+    print("Evaluation step: " + str(eval_step))
+    print("Training iterations: " + str(num_train_iters))
+
     print("Upscaling method: " + upscale)
     print("Downscaling method: " + downscale)
     print("Self-attention :" + str(self_att))
     print("Flat: " + str(flat))
     print("Flat+channels :" + str(mix_input))
     print("Padding :" + str(padding))
-    print("Triple exposure: " + str(triple_exposure))
-    print("Up exposure: " + str(up_exposure))
-    print("Down exposure: " + str(down_exposure))
     print("Normalization: " + str(norm))
     print("First Level Normalization: " + str(norm_level_1))
     print("Rescale Normalization: " + str(norm_scale))
     print("Spectral Normalization: " + str(sn))
-    if triple_exposure:
-        print("Path to the over dir: " + over_dir)
-        print("Path to the under dir: " + under_dir)
+
     print("Loss function=" +
         " mse:" + str(fac_mse) +
         " l1:" + str(fac_l1) +
@@ -239,10 +245,11 @@ def process_command_args(arguments):
         " unet:" + str(fac_unet) +
         " uv:" + str(fac_uv))
 
-    return level, batch_size, train_size, learning_rate, restore_iter, num_train_iters,\
-        triple_exposure, up_exposure, down_exposure, over_dir, under_dir, dslr_dir, norm, norm_level_1, norm_scale, sn,\
-        dataset_dir, model_dir, vgg_dir, eval_step, save_mid_imgs, upscale, downscale, self_att, flat, mix_input, padding,\
-        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_lpips, fac_huber, fac_fourier, fac_unet, fac_uv
+    return dataset_dir, model_dir, result_dir, vgg_dir, dslr_dir, phone_dir, restore_iter,\
+        triple_exposure, up_exposure, down_exposure, over_dir, under_dir,\
+        patch_w, patch_h, batch_size, train_size, learning_rate, eval_step, num_train_iters, level, \
+        upscale, downscale, self_att, flat, mix_input, padding, norm, norm_level_1, norm_scale, sn,\
+        fac_mse, fac_l1, fac_ssim, fac_ms_ssim, fac_color, fac_vgg, fac_texture, fac_fourier, fac_lpips, fac_huber, fac_unet, fac_uv
 
 def process_test_model_args(arguments):
     out_dir = 'single_exp/'
