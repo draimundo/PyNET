@@ -51,6 +51,8 @@ def load_val_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, D
     val_data = np.zeros((NUM_VAL_IMAGES, PATCH_WIDTH, PATCH_HEIGHT, PATCH_DEPTH))
     val_answ = np.zeros((NUM_VAL_IMAGES, int(PATCH_WIDTH * DSLR_SCALE/FAC_SCALE), int(PATCH_HEIGHT * DSLR_SCALE/FAC_SCALE), 3))
 
+    format_dslr = str.split(os.listdir(val_directory_dslr)[0],'.')[-1]
+
     for i in tqdm(range(0, NUM_VAL_IMAGES)):
 
         In = np.asarray(imageio.imread(val_directory_phone + str(i) + '.png'))
@@ -86,7 +88,7 @@ def load_val_data(dataset_dir, dslr_dir, phone_dir, PATCH_WIDTH, PATCH_HEIGHT, D
             else:
                 val_data[i, ..., 0] = In
 
-        I = Image.open(val_directory_dslr + str(i) + '.png')
+        I = Image.open(val_directory_dslr + str(i) + '.' + format_dslr)
         I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
         I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE/FAC_SCALE), int(PATCH_HEIGHT * DSLR_SCALE/FAC_SCALE), 3])) / 255
         val_answ[i, :] = I
@@ -241,7 +243,7 @@ def load_train_patch(dataset_dir, dslr_dir, phone_dir, TRAIN_SIZE, PATCH_WIDTH, 
             else:
                 train_data[i, ..., 0] = In
 
-        I = Image.open(train_directory_dslr + str(img) + '.png')
+        I = Image.open(train_directory_dslr + str(img) + '.' + format_dslr)
         I = np.array(I.resize((int(I.size[0] * DSLR_SCALE / 2), int(I.size[1] * DSLR_SCALE / 2)), resample=Image.BICUBIC))
         I = np.float32(np.reshape(I, [1, int(PATCH_WIDTH * DSLR_SCALE / FAC_SCALE), int(PATCH_HEIGHT * DSLR_SCALE / FAC_SCALE), 3])) / 255
         train_answ[i, :] = I
