@@ -112,6 +112,8 @@ def process_command_args(arguments):
             eval_step = int(args.split("=")[1])
         if args.startswith("num_train_iters"):
             num_train_iters = int(args.split("=")[1])
+        if args.startswith("level"):
+            level = int(args.split("=")[1])
 
         if args.startswith("upscale"):
             upscale = args.split("=")[1]
